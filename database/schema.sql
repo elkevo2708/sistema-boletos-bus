@@ -6,6 +6,10 @@ SET NAMES utf8mb4;
 CREATE DATABASE IF NOT EXISTS boletos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE boletos;
 
+-- El servidor temporal de inicialización puede seguir en UTC. La sesión
+-- de este script y el mysqld definitivo usan hora de Colombia.
+SET time_zone = '-05:00';
+
 CREATE TABLE roles (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL,
