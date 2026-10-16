@@ -1,0 +1,85 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: lamana-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: boletos
+      MYSQL_USER: boletos
+      MYSQL_PASSWORD: boletos
+    command:
+      - --event-scheduler=ON
+      - --default-time-zone=-05:00
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --log-bin-trust-function-creators=1
+    volumes:
+      - datos_mysql:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uboletos -pboletos --silent && mysql -uboletos -pboletos -Nse 'SELECT 1 FROM roles LIMIT 1' boletos",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 25s
+
+  backend:
+    build: ./backend
+    container_name: lamana-backend
+    volumes:
+      - medios:/app/medios
+    environment:
+      DATABASE_URL: mysql+aiomysql://boletos:boletos@mysql:3306/boletos?charset=utf8mb4
+      JWT_SECRET: viaandina-dev-secreto-cambiar
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_MINUTOS: "60"
+      REFRESH_TOKEN_DIAS: "7"
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173
+      IDENTIFICACION_LOOKUP_URL: ""
+      IDENTIFICACION_LOOKUP_API_KEY: ""
+      FIRMA_P12_RUTA: ""
+      FIRMA_P12_CLAVE: ""
+      SRI_MODO: offline
+      SRI_RECEPCION_URL: ""
+      SRI_AUTORIZACION_URL: ""
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_USUARIO: ""
+      SMTP_CLAVE: ""
+      SMTP_DESDE: facturacion@lamana.ec
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/salud')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    container_name: lamana-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  datos_mysql:
+  medios:
