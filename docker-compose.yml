@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: viaandina-mysql
+    container_name: lamana-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: boletos
@@ -31,7 +31,9 @@ services:
 
   backend:
     build: ./backend
-    container_name: viaandina-backend
+    container_name: lamana-backend
+    volumes:
+      - medios:/app/medios
     environment:
       DATABASE_URL: mysql+aiomysql://boletos:boletos@mysql:3306/boletos?charset=utf8mb4
       JWT_SECRET: viaandina-dev-secreto-cambiar
@@ -59,7 +61,7 @@ services:
 
   frontend:
     build: ./frontend
-    container_name: viaandina-frontend
+    container_name: lamana-frontend
     ports:
       - "8080:80"
     depends_on:
@@ -68,3 +70,4 @@ services:
 
 volumes:
   datos_mysql:
+  medios:

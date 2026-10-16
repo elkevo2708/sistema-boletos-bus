@@ -1,6 +1,6 @@
-# VíaAndina
+# Cooperativa de Transporte La Maná
 
-Sistema de venta de boletos de bus intermunicipal. La interfaz, la API y la base de datos están en español. Un asiento de un viaje solo puede estar ocupado por un boleto activo: la garantía es un índice único sobre la columna generada `ocupa_asiento`.
+Sistema de venta de boletos de la cooperativa, con sede en La Maná, Cotopaxi. La interfaz, la API y la base de datos están en español. Los precios se muestran en dólares de los Estados Unidos. Un asiento de un viaje solo puede estar ocupado por un boleto activo: la garantía es un índice único sobre la columna generada `ocupa_asiento`.
 
 ## Cómo ejecutarlo
 
@@ -14,9 +14,9 @@ docker compose up --build
 - API y documentación: http://localhost:8000/docs
 - MySQL: `localhost:3306`, base `boletos`, usuario `boletos`, contraseña `boletos`
 
-La primera arrancada crea el esquema, los disparadores, el evento que expira reservas y los datos de prueba. Los horarios están en hora de Colombia (UTC−5).
+La primera arrancada crea el esquema, los disparadores, el evento que expira reservas y los datos de prueba (ciudades del Ecuador, rutas, noticias, anuncios y fotos). Los horarios están en hora de Ecuador (UTC−5). Las imágenes de la galería viven en el volumen `medios`, montado en `/app/medios`, y se sirven en `/medios`.
 
-Para volver a cargar la semilla:
+Para volver a cargar la semilla hay que borrar también los volúmenes:
 
 ```bash
 docker compose down -v
@@ -31,16 +31,20 @@ docker compose up --build
 | Contraseña | `Admin123!` |
 | Documento | `1000000001` |
 
-La contraseña se guarda con bcrypt. El cliente se registra desde **Ingresar → Crear cuenta**.
+La contraseña se guarda con bcrypt. El cliente se registra desde **Ingresar → Crear cuenta**. El correo de prueba del administrador usa un dominio reservado: el alta pública exige un dominio real, por ejemplo `gmail.com`.
 
 ## Recorrido
 
-1. En **Buscar**, elige origen, destino y fecha. Mañana hay salidas de prueba, por ejemplo Bogotá → Medellín y Bogotá → Cali.
-2. Abre el mapa. Verde es libre, azul es el asiento elegido, gris es ocupado y el rayado es bloqueado.
-3. Reserva (10 minutos) e indica una referencia de pago simulada. El backend marca el boleto como pagado y devuelve el QR en PNG.
-4. En **Taquilla**, la cuenta administradora crea viajes (la llegada sale de la duración de la ruta), cambia la tarifa —queda una fila en `auditoria`— y consulta las ventas del día.
+1. En el inicio, elige origen, destino y fecha. Mañana hay salidas de prueba, por ejemplo La Maná → Quevedo y La Maná → Latacunga.
+2. La franja y la ventana de promoción salen de los anuncios vigentes. Se pueden cerrar; quedan ocultas en esa pestaña del navegador.
+3. **Noticias** lista las publicaciones y abre cada nota. **Galería** muestra buses, destinos y terminales; al pulsar una foto se abre el visor.
+4. En el mapa, verde es libre, azul es el asiento elegido, gris es ocupado y el rayado es bloqueado. El mapa se actualiza en vivo por `/ws/viajes/{id}`.
+5. Reserva (10 minutos) y elige el método: tarjeta, transferencia, PayPhone o efectivo en ventanilla. El cobro está simulado. El número de tarjeta no sale del navegador. El backend marca el boleto como pagado y devuelve el QR en PNG.
+6. En **Taquilla**, la cuenta administradora crea viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día y administra noticias, anuncios e imágenes.
 
-El mapa se actualiza en vivo por el WebSocket `/ws/viajes/{id}` después de reservar, pagar o cancelar.
+## Pagos
+
+`app/pagos.py` define `ProveedorPago`. Cada método (`tarjeta`, `transferencia`, `payphone`, `efectivo`) tiene un adaptador en `REGISTRO`. Hoy todos son `PasarelaSimulada`: aprueban el cobro y devuelven el proveedor `simulado:<metodo>`. Una pasarela real reemplaza esa clase y se registra con la misma clave, sin tocar la reserva ni el QR.
 
 ## Qué garantiza que no se venda de más
 
@@ -62,21 +66,26 @@ La vista `v_disponibilidad` clasifica cada puesto del viaje en `libre`, `bloquea
 | GET | `/viajes?origen&destino&fecha` | Salidas con puestos libres |
 | GET | `/viajes/{id}/asientos` | Mapa leído de `v_disponibilidad` |
 | POST | `/boletos/reservar` | Reserva 10 minutos |
-| POST | `/boletos/{codigo}/pagar` | `SELECT FOR UPDATE`, pago idempotente por `referencia_ext`, QR |
+| POST | `/boletos/{codigo}/pagar` | `SELECT FOR UPDATE`, método de pago, referencia única, QR |
 | POST | `/boletos/{codigo}/cancelar` | Libera el asiento |
+| GET | `/blog` y `/blog/{slug}` | Noticias y destinos publicados |
+| GET | `/anuncios` | Promociones vigentes (franja o ventana) |
+| GET | `/galeria` | Fotos públicas |
 | POST | `/admin/viajes` | Crea un viaje (rol administrador) |
 | PATCH | `/admin/rutas/{id}/tarifa` | Cambia la tarifa y audita |
 | GET | `/admin/ventas?fecha` | Reporte diario |
+| CRUD | `/admin/blog`, `/admin/anuncios`, `/admin/galeria` | Contenido. La galería recibe `multipart` (JPG, PNG o WebP, hasta 5 MB) |
 | WS | `/ws/viajes/{id}` | Cambios de asiento |
 
-Las consultas van parametrizadas. El frontend publicado en el puerto 8080 proxifica `/api` y `/ws` hacia el backend; CORS permite además `http://localhost:8080` y `http://localhost:5173`.
+Las consultas van parametrizadas. El frontend publicado en el puerto 8080 proxifica `/api`, `/ws` y `/medios` hacia el backend. CORS permite además `http://localhost:8080` y `http://localhost:5173`.
 
 ## Estructura
 
 ```
-database/schema.sql    MySQL 8, InnoDB, utf8mb4
-backend/               FastAPI, SQLAlchemy 2 async, aiomysql
-frontend/              React, Vite, react-router-dom
+database/schema.sql      MySQL 8, InnoDB, utf8mb4
+backend/                  FastAPI, SQLAlchemy 2 async, aiomysql
+backend/medios-semilla/   Fotos que el contenedor copia al volumen la primera vez
+frontend/                 React, Vite, react-router-dom
 docker-compose.yml
 ```
 

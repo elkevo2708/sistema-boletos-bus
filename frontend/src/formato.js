@@ -32,15 +32,17 @@ export function formatearFechaHora(valor) {
   return `${Number(dia)} ${MESES[Number(mes) - 1]} · ${hora}`;
 }
 
-export function formatearPesos(valor) {
+export function formatearDinero(valor) {
   const numero = Number(valor);
   if (Number.isNaN(numero)) return valor;
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-EC', {
     style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
+    currency: 'USD',
+    minimumFractionDigits: 2,
   }).format(numero);
 }
+
+export const formatearPesos = formatearDinero;
 
 export function cuentaRegresiva(ms) {
   const total = Math.max(0, Math.ceil(ms / 1000));

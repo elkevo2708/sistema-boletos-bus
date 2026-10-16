@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencias import obtener_sesion, usuario_actual
 from app.errores import CodigoDuplicado, traducir_error_mysql
 from app.esquemas import PagarIn, ReservarIn
+from app.pagos import SolicitudPago, obtener_proveedor
 from app.presentacion import fila_a_dict
 from app.qr import png_base64
 from app.ws import publicar_asiento
@@ -138,17 +139,33 @@ async def pagar(
         if bloqueado["vencida"]:
             raise HTTPException(status_code=409, detail="La reserva expiró")
 
+        proveedor = obtener_proveedor(datos.metodo)
+        if proveedor is None:
+            raise HTTPException(status_code=422, detail="Método de pago no disponible")
+        cobro = proveedor.cobrar(
+            SolicitudPago(
+                boleto_codigo=codigo,
+                monto=bloqueado["precio"],
+                referencia_ext=datos.referencia_ext,
+                metodo=datos.metodo,
+            )
+        )
+        if not cobro.aprobado:
+            raise HTTPException(status_code=402, detail=cobro.mensaje)
+
         await sesion.execute(
             text(
                 """
-                INSERT INTO pagos (boleto_id, referencia_ext, monto, estado, pagado_en)
-                VALUES (:boleto_id, :referencia, :monto, 'aprobado', NOW())
+                INSERT INTO pagos (boleto_id, referencia_ext, monto, metodo, proveedor, estado, pagado_en)
+                VALUES (:boleto_id, :referencia, :monto, :metodo, :proveedor, 'aprobado', NOW())
                 """
             ),
             {
                 "boleto_id": bloqueado["id"],
-                "referencia": datos.referencia_ext,
+                "referencia": cobro.referencia,
                 "monto": bloqueado["precio"],
+                "metodo": datos.metodo,
+                "proveedor": cobro.proveedor,
             },
         )
         await sesion.execute(
@@ -179,6 +196,8 @@ async def pagar(
                        cd.nombre AS destino,
                        p.referencia_ext,
                        p.monto,
+                       p.metodo,
+                       p.proveedor,
                        p.estado AS estado_pago,
                        p.pagado_en
                   FROM boletos b
@@ -205,6 +224,7 @@ async def pagar(
             "salida": datos_qr["salida"],
             "asiento": datos_qr["asiento_numero"],
             "referencia": datos_qr["referencia_ext"],
+            "metodo": datos_qr["metodo"],
         }
     )
     await publicar_asiento(sesion, int(detalle["viaje_id"]), int(detalle["asiento_id"]))
@@ -220,8 +240,11 @@ async def pagar(
         "pago": {
             "referencia_ext": datos_qr["referencia_ext"],
             "monto": datos_qr["monto"],
+            "metodo": datos_qr["metodo"],
+            "proveedor": datos_qr["proveedor"],
             "estado": datos_qr["estado_pago"],
             "pagado_en": datos_qr["pagado_en"],
+            "mensaje": cobro.mensaje,
         },
         "qr_png_base64": qr,
     }

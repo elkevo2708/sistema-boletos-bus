@@ -1,5 +1,5 @@
--- VíaAndina: esquema de venta de boletos de bus.
--- MySQL 8, InnoDB, utf8mb4. El reloj de negocio es hora de Colombia (UTC-5),
+-- Cooperativa de Transporte La Maná: esquema de venta de boletos.
+-- MySQL 8, InnoDB, utf8mb4. El reloj de negocio es hora de Ecuador (UTC-5),
 -- configurada en el servidor (--default-time-zone=-05:00).
 
 SET NAMES utf8mb4;
@@ -7,7 +7,7 @@ CREATE DATABASE IF NOT EXISTS boletos CHARACTER SET utf8mb4 COLLATE utf8mb4_unic
 USE boletos;
 
 -- El servidor temporal de inicialización puede seguir en UTC. La sesión
--- de este script y el mysqld definitivo usan hora de Colombia.
+-- de este script y el mysqld definitivo usan hora de Ecuador.
 SET time_zone = '-05:00';
 
 CREATE TABLE roles (
@@ -152,6 +152,8 @@ CREATE TABLE pagos (
   boleto_id BIGINT UNSIGNED NOT NULL,
   referencia_ext VARCHAR(64) NOT NULL,
   monto DECIMAL(10, 2) NOT NULL,
+  metodo ENUM('tarjeta', 'transferencia', 'payphone', 'efectivo') NOT NULL DEFAULT 'efectivo',
+  proveedor VARCHAR(40) NOT NULL DEFAULT 'simulado:efectivo',
   estado ENUM('pendiente', 'aprobado', 'rechazado') NOT NULL DEFAULT 'aprobado',
   pagado_en DATETIME NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -172,6 +174,46 @@ CREATE TABLE auditoria (
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_auditoria_entidad (entidad, entidad_id),
   CONSTRAINT fk_auditoria_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+) ENGINE=InnoDB;
+
+CREATE TABLE blog_posts (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(160) NOT NULL,
+  titulo VARCHAR(180) NOT NULL,
+  resumen VARCHAR(400) NOT NULL,
+  cuerpo MEDIUMTEXT NOT NULL,
+  categoria ENUM('noticia', 'destino') NOT NULL,
+  imagen VARCHAR(255) NULL,
+  publicado TINYINT(1) NOT NULL DEFAULT 1,
+  publicado_en DATETIME NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_blog_slug (slug),
+  KEY idx_blog_publicados (publicado, publicado_en)
+) ENGINE=InnoDB;
+
+CREATE TABLE anuncios (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(140) NOT NULL,
+  mensaje VARCHAR(500) NOT NULL,
+  enlace VARCHAR(255) NULL,
+  tipo ENUM('banner', 'modal') NOT NULL DEFAULT 'banner',
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  inicio DATE NOT NULL,
+  fin DATE NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_anuncios_fechas CHECK (fin >= inicio),
+  KEY idx_anuncios_vigencia (activo, inicio, fin)
+) ENGINE=InnoDB;
+
+CREATE TABLE galeria (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(140) NOT NULL,
+  descripcion VARCHAR(300) NULL,
+  categoria ENUM('buses', 'destinos', 'terminales') NOT NULL,
+  archivo VARCHAR(255) NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_galeria_archivo (archivo),
+  KEY idx_galeria_categoria (categoria)
 ) ENGINE=InnoDB;
 
 DELIMITER $$
@@ -320,34 +362,36 @@ SELECT r.id, 'Ana', 'Beltrán', '1000000001', 'admin@viaandina.local',
  WHERE r.nombre = 'administrador';
 
 INSERT INTO ciudades (nombre, departamento) VALUES
-  ('Bogotá', 'Cundinamarca'),
-  ('Medellín', 'Antioquia'),
-  ('Cali', 'Valle del Cauca'),
-  ('Bucaramanga', 'Santander'),
-  ('Barranquilla', 'Atlántico'),
-  ('Cartagena', 'Bolívar');
+  ('La Maná', 'Cotopaxi'),
+  ('Quevedo', 'Los Ríos'),
+  ('Latacunga', 'Cotopaxi'),
+  ('Quito', 'Pichincha'),
+  ('Santo Domingo', 'Santo Domingo de los Tsáchilas'),
+  ('Ambato', 'Tungurahua'),
+  ('Guayaquil', 'Guayas');
 
 INSERT INTO rutas (origen_id, destino_id, duracion_min, precio_base)
 SELECT o.id, d.id, x.duracion_min, x.precio_base
   FROM (
-    SELECT 'Bogotá' AS origen, 'Medellín' AS destino, 480 AS duracion_min, 89000.00 AS precio_base
-    UNION ALL SELECT 'Medellín', 'Bogotá', 480, 89000.00
-    UNION ALL SELECT 'Bogotá', 'Cali', 540, 95000.00
-    UNION ALL SELECT 'Cali', 'Bogotá', 540, 95000.00
-    UNION ALL SELECT 'Medellín', 'Cali', 480, 82000.00
-    UNION ALL SELECT 'Cali', 'Medellín', 480, 82000.00
-    UNION ALL SELECT 'Bogotá', 'Bucaramanga', 420, 76000.00
-    UNION ALL SELECT 'Bucaramanga', 'Bogotá', 420, 76000.00
-    UNION ALL SELECT 'Barranquilla', 'Cartagena', 150, 32000.00
-    UNION ALL SELECT 'Cartagena', 'Barranquilla', 150, 32000.00
+    SELECT 'La Maná' AS origen, 'Quevedo' AS destino, 75 AS duracion_min, 3.50 AS precio_base
+    UNION ALL SELECT 'Quevedo', 'La Maná', 75, 3.50
+    UNION ALL SELECT 'La Maná', 'Latacunga', 120, 5.00
+    UNION ALL SELECT 'Latacunga', 'La Maná', 120, 5.00
+    UNION ALL SELECT 'La Maná', 'Quito', 210, 8.00
+    UNION ALL SELECT 'Quito', 'La Maná', 210, 8.00
+    UNION ALL SELECT 'La Maná', 'Santo Domingo', 150, 6.00
+    UNION ALL SELECT 'Santo Domingo', 'Quito', 180, 5.50
+    UNION ALL SELECT 'La Maná', 'Ambato', 165, 6.50
+    UNION ALL SELECT 'Quevedo', 'Guayaquil', 180, 7.00
+    UNION ALL SELECT 'Guayaquil', 'Quevedo', 180, 7.00
   ) AS x
   JOIN ciudades o ON o.nombre = x.origen
   JOIN ciudades d ON d.nombre = x.destino;
 
 INSERT INTO buses (placa, numero_disco, capacidad, pisos, estado) VALUES
-  ('RUA101', '101', 40, 1, 'operativo'),
-  ('RUA202', '202', 40, 2, 'operativo'),
-  ('MNT303', '303', 20, 1, 'mantenimiento');
+  ('TLM0101', '101', 40, 1, 'operativo'),
+  ('TLM0202', '202', 40, 2, 'operativo'),
+  ('TLM0303', '303', 20, 1, 'mantenimiento');
 
 -- Bus 101: un piso, 10 filas × 4 columnas (pasillo visual entre columna 2 y 3).
 INSERT INTO asientos (bus_id, numero, piso, fila, columna, tipo)
@@ -391,18 +435,95 @@ SELECT r.id,
        r.precio_base,
        'programado'
   FROM (
-    SELECT 'Bogotá' AS origen, 'Medellín' AS destino, '101' AS disco, 1 AS dia, '06:00:00' AS hora
-    UNION ALL SELECT 'Medellín', 'Bogotá', '101', 1, '15:00:00'
-    UNION ALL SELECT 'Bogotá', 'Bucaramanga', '101', 2, '06:00:00'
-    UNION ALL SELECT 'Bucaramanga', 'Bogotá', '101', 2, '14:00:00'
-    UNION ALL SELECT 'Bogotá', 'Cali', '202', 1, '07:00:00'
-    UNION ALL SELECT 'Cali', 'Bogotá', '202', 1, '17:00:00'
-    UNION ALL SELECT 'Barranquilla', 'Cartagena', '202', 2, '08:00:00'
-    UNION ALL SELECT 'Cartagena', 'Barranquilla', '202', 2, '11:00:00'
-    UNION ALL SELECT 'Medellín', 'Cali', '202', 2, '14:00:00'
-    UNION ALL SELECT 'Cali', 'Medellín', '202', 3, '06:00:00'
+    SELECT 'La Maná' AS origen, 'Quevedo' AS destino, '101' AS disco, 1 AS dia, '06:30:00' AS hora
+    UNION ALL SELECT 'Quevedo', 'La Maná', '101', 1, '09:00:00'
+    UNION ALL SELECT 'La Maná', 'Latacunga', '101', 1, '12:00:00'
+    UNION ALL SELECT 'Latacunga', 'La Maná', '101', 1, '15:30:00'
+    UNION ALL SELECT 'La Maná', 'Quito', '101', 2, '06:00:00'
+    UNION ALL SELECT 'Quito', 'La Maná', '101', 2, '12:00:00'
+    UNION ALL SELECT 'La Maná', 'Ambato', '101', 3, '08:00:00'
+    UNION ALL SELECT 'La Maná', 'Quevedo', '202', 1, '06:00:00'
+    UNION ALL SELECT 'Quevedo', 'Guayaquil', '202', 1, '08:30:00'
+    UNION ALL SELECT 'Guayaquil', 'Quevedo', '202', 1, '14:00:00'
+    UNION ALL SELECT 'Quevedo', 'La Maná', '202', 2, '08:00:00'
+    UNION ALL SELECT 'La Maná', 'Santo Domingo', '202', 2, '11:00:00'
+    UNION ALL SELECT 'Santo Domingo', 'Quito', '202', 3, '08:00:00'
   ) AS x
   JOIN ciudades o ON o.nombre = x.origen
   JOIN ciudades d ON d.nombre = x.destino
   JOIN rutas r ON r.origen_id = o.id AND r.destino_id = d.id
   JOIN buses b ON b.numero_disco = x.disco;
+
+INSERT INTO blog_posts (slug, titulo, resumen, cuerpo, categoria, imagen, publicado, publicado_en) VALUES
+(
+  'salida-extra-quito-en-feriado',
+  'Salida extra a Quito en feriado',
+  'Los viernes y domingos de feriado sumamos un turno de madrugada desde el terminal de La Maná hasta Quitumbe.',
+  'La Cooperativa de Transporte La Maná habilita una salida adicional hacia Quito cuando el feriado cae en viernes o domingo. El bus parte del terminal a las 05:30 y el tiempo habitual hasta Quitumbe es de tres horas y media, según el tráfico de la vía Alóag.\n\nEl pasaje se reserva en esta boletería o en ventanilla. Recomendamos llegar veinte minutos antes: la taquilla cierra el abordaje cuando el disco enciende las luces de salida.\n\nSi viaja con equipaje de bodega, etiquételo con su nombre y el número de asiento. La unidad de dos pisos no acepta carga suelta en el pasillo.',
+  'noticia',
+  'noticia-horario.jpg',
+  1,
+  DATE_SUB(NOW(), INTERVAL 2 DAY)
+),
+(
+  'martes-2x1-quevedo',
+  'Martes 2x1 en la ruta a Quevedo',
+  'El segundo pasaje de la misma compra, en las salidas de la mañana hacia Quevedo, sale a mitad de precio.',
+  'De martes a martes, la ruta corta entre La Maná y Quevedo tiene una promoción sencilla: en una misma compra, el segundo boleto de las salidas de la mañana paga la mitad.\n\nAplica para los turnos de las 06:30 y las 09:00, mientras haya asientos libres. No se acumula con el descuento de estudiantes y el segundo pasajero debe viajar en el mismo bus.\n\nPuede pagarlo con tarjeta, transferencia, PayPhone o en efectivo en ventanilla. La reserva en línea sigue durando diez minutos.',
+  'noticia',
+  'bus-costa.jpg',
+  1,
+  DATE_SUB(NOW(), INTERVAL 6 DAY)
+),
+(
+  'quevedo-rio-y-mercado',
+  'Quevedo: río, mercado y una hora de camino',
+  'La salida más corta de la cooperativa deja en el centro de Quevedo, a pocas cuadras del malecón.',
+  'Quevedo queda a unos setenta y cinco minutos de La Maná por una vía plana, entre banano y cacao. El bus entra al terminal y, si lo prefiere, puede bajarse en el centro, cerca del mercado.\n\nVale la pena caminar el malecón al final de la tarde, cuando baja el calor, y probar el pescado de río. Si sigue hacia Guayaquil, hay combinación el mismo día en nuestra unidad de la costa: pregunte en taquilla por el turno de las 07:00.\n\nLleve efectivo menudo si va a comprar en el mercado. El pasaje de regreso a La Maná se agota los domingos por la noche.',
+  'destino',
+  'destino-quevedo.jpg',
+  1,
+  DATE_SUB(NOW(), INTERVAL 12 DAY)
+),
+(
+  'latacunga-y-la-sierra',
+  'Latacunga y la subida a la sierra',
+  'En dos horas el paisaje cambia: de la humedad de La Maná al frío claro de Latacunga, con el Cotopaxi al fondo.',
+  'La ruta a Latacunga sube desde el subtrópico cotopaxense hasta el valle interandino. Son dos horas si la vía está despejada, y el bus para en Saquisilí cuando hay pasajeros.\n\nEn Latacunga el terminal queda cerca del centro. Si el día está abierto, el Cotopaxi se ve desde la plaza. Muchos pasajeros siguen a Quito con nosotros al día siguiente; también puede comprar el tramo seguido Latacunga–Quito, de una hora y cuarenta y cinco minutos.\n\nLleve una chaqueta. La diferencia de temperatura con La Maná es fuerte, sobre todo en la salida de las 06:00.',
+  'destino',
+  'destino-latacunga.jpg',
+  1,
+  DATE_SUB(NOW(), INTERVAL 20 DAY)
+);
+
+INSERT INTO anuncios (titulo, mensaje, enlace, tipo, activo, inicio, fin) VALUES
+(
+  'Martes 2x1 a Quevedo',
+  'En las salidas de la mañana, el segundo pasaje a Quevedo de la misma compra sale a mitad de precio.',
+  '/noticias/martes-2x1-quevedo',
+  'banner',
+  1,
+  CURDATE(),
+  DATE_ADD(CURDATE(), INTERVAL 90 DAY)
+),
+(
+  'Estudiantes a Quito',
+  'Con cédula y carné vigente, el pasaje La Maná–Quito tiene dos dólares de descuento en ventanilla. Reserve su asiento en línea y presente el carné al abordar.',
+  '/noticias/salida-extra-quito-en-feriado',
+  'modal',
+  1,
+  CURDATE(),
+  DATE_ADD(CURDATE(), INTERVAL 90 DAY)
+);
+
+INSERT INTO galeria (titulo, descripcion, categoria, archivo) VALUES
+  ('Unidad de la costa', 'Disco 101, un piso, cuarenta puestos. Cubre La Maná, Quevedo y Latacunga.', 'buses', 'bus-costa.jpg'),
+  ('Salón de pasajeros', 'Butacas de tela y pasillo central. Las ventanas son los asientos de columna 1 y 4.', 'buses', 'bus-interior.jpg'),
+  ('Unidad de dos pisos', 'Disco 202. Sube a Santo Domingo, Ambato y la ruta larga a Guayaquil.', 'buses', 'bus-dos-pisos.jpg'),
+  ('En la vía a la costa', 'Tramo habitual entre La Maná y Quevedo, al final de la tarde.', 'destinos', 'hero-ruta.jpg'),
+  ('Río en Quevedo', 'Llegada a la llanura de Los Ríos.', 'destinos', 'destino-quevedo.jpg'),
+  ('Latacunga y el Cotopaxi', 'El valle se abre después de la subida desde La Maná.', 'destinos', 'destino-latacunga.jpg'),
+  ('Malecón de Guayaquil', 'Conexión desde Quevedo en la unidad de la tarde.', 'destinos', 'destino-guayaquil.jpg'),
+  ('Terminal de La Maná', 'Andén de salida. Taquilla abierta de 05:00 a 21:00.', 'terminales', 'terminal-lamana.jpg'),
+  ('Terminal en Quito', 'Llegada a Quitumbe en el turno de la madrugada.', 'terminales', 'terminal-quito.jpg'),
+  ('Abordaje de madrugada', 'Pasajeros del turno extra de feriado.', 'terminales', 'noticia-horario.jpg');

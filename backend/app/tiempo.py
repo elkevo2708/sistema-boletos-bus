@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-# Hora de Colombia, sin horario de verano. Coincide con default-time-zone=-05:00 de MySQL.
+# Hora de Ecuador (UTC-5, sin horario de verano). Coincide con default-time-zone=-05:00 de MySQL.
 ZONA_COLOMBIA = timezone(timedelta(hours=-5))
 
 

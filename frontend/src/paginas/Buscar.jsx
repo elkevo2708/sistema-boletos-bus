@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
-import { fechaBogota, formatearFechaHora, formatearPesos } from '../formato';
+import { fechaBogota, formatearFechaHora, formatearDinero } from '../formato';
 
 export default function Buscar() {
   const [ciudades, setCiudades] = useState([]);
@@ -17,11 +17,11 @@ export default function Buscar() {
     solicitar('/ciudades')
       .then((lista) => {
         setCiudades(lista);
-        const bogota = lista.find((ciudad) => ciudad.nombre === 'Bogotá');
-        const medellin = lista.find((ciudad) => ciudad.nombre === 'Medellín');
-        if (bogota && medellin) {
-          setOrigen(String(bogota.id));
-          setDestino(String(medellin.id));
+        const origenBase = lista.find((ciudad) => ciudad.nombre === 'La Maná');
+        const destinoBase = lista.find((ciudad) => ciudad.nombre === 'Quevedo');
+        if (origenBase && destinoBase) {
+          setOrigen(String(origenBase.id));
+          setDestino(String(destinoBase.id));
         } else if (lista.length > 1) {
           setOrigen(String(lista[0].id));
           setDestino(String(lista[1].id));
@@ -63,14 +63,16 @@ export default function Buscar() {
   const nombre = (id) => ciudades.find((ciudad) => String(ciudad.id) === String(id));
 
   return (
-    <div className="pagina">
-      <section className="hero">
-        <p className="sobrelinea">Cordillera, valle y costa</p>
-        <h1>Cruza el país con el asiento ya elegido.</h1>
-        <p className="lead">
-          Consulta la salida, mira el mapa del bus y reserva durante diez minutos
-          mientras confirmas el pago.
-        </p>
+    <div>
+      <section className="hero" style={{ backgroundImage: 'linear-gradient(90deg, rgba(15,28,24,.82), rgba(15,28,24,.28)), url(/medios/hero-ruta.jpg)' }}>
+        <div className="hero-texto">
+          <p className="sobrelinea">Cotopaxi · Los Ríos · Sierra y costa</p>
+          <h1>De La Maná al país, con el asiento ya elegido.</h1>
+          <p className="lead">
+            Salidas diarias a Quevedo, Latacunga, Quito, Ambato y Guayaquil.
+            Reserve diez minutos y pague con tarjeta, transferencia, PayPhone o en ventanilla.
+          </p>
+        </div>
       </section>
 
       <form className="panel-busqueda" onSubmit={buscar}>
@@ -135,7 +137,7 @@ export default function Buscar() {
                 <p className="meta">Disco {viaje.numero_disco} · placa {viaje.placa} · {viaje.pisos === 2 ? 'dos pisos' : 'un piso'}</p>
               </div>
               <div className="tiquete-lado">
-                <p className="precio">{formatearPesos(viaje.precio)}</p>
+                <p className="precio">{formatearDinero(viaje.precio)}</p>
                 <p className={viaje.asientos_libres > 0 ? 'libres' : 'agotado'}>
                   {viaje.asientos_libres} libres de {viaje.capacidad}
                 </p>
@@ -151,6 +153,57 @@ export default function Buscar() {
           ))}
         </div>
       </section>
+      <Destacados />
+    </div>
+  );
+}
+
+function Destacados() {
+  const [notas, setNotas] = useState([]);
+  const [fotos, setFotos] = useState([]);
+
+  useEffect(() => {
+    solicitar('/blog').then((data) => setNotas(data.slice(0, 3))).catch(() => {});
+    solicitar('/galeria').then((data) => setFotos(data.slice(0, 4))).catch(() => {});
+  }, []);
+
+  if (!notas.length && !fotos.length) return null;
+
+  return (
+    <div className="pagina destacados">
+      {notas.length > 0 && (
+        <section>
+          <div className="seccion-cabeza">
+            <h2>De la cooperativa</h2>
+            <Link to="/noticias">Todas las noticias</Link>
+          </div>
+          <div className="rejilla-notas">
+            {notas.map((nota) => (
+              <article className="nota" key={nota.id}>
+                {nota.imagen && <img src={nota.imagen} alt="" />}
+                <p className="sobrelinea">{nota.categoria}</p>
+                <h3><Link to={`/noticias/${nota.slug}`}>{nota.titulo}</Link></h3>
+                <p>{nota.resumen}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      {fotos.length > 0 && (
+        <section>
+          <div className="seccion-cabeza">
+            <h2>La ruta en imágenes</h2>
+            <Link to="/galeria">Abrir la galería</Link>
+          </div>
+          <div className="tira-fotos">
+            {fotos.map((foto) => (
+              <Link key={foto.id} to="/galeria" aria-label={foto.titulo}>
+                <img src={foto.url} alt={foto.titulo} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

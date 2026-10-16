@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
 import { useAuth } from '../contexto/AuthContext';
 import { ahoraBogotaInput, fechaBogota, formatearFechaHora, formatearPesos } from '../formato';
+import { PanelAnuncios, PanelBlog, PanelGaleria } from './AdminContenido';
 
 export default function Admin() {
   const { usuario, token } = useAuth();
@@ -13,6 +14,7 @@ export default function Admin() {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [pestana, setPestana] = useState('operacion');
 
   const esAdmin = usuario?.rol === 'administrador';
 
@@ -115,10 +117,28 @@ export default function Admin() {
   return (
     <div className="pagina">
       <h1>Taquilla</h1>
-      <p className="lead">Programa salidas, ajusta la tarifa base y revisa los pagos aprobados del día.</p>
-      {mensaje && <p className="nota" role="status">{mensaje}</p>}
+      <p className="lead">Salidas, tarifas, noticias, promociones y la galería de la cooperativa.</p>
+      <div className="filtros" role="tablist" aria-label="Secciones de taquilla">
+        {[
+          ['operacion', 'Operación'],
+          ['blog', 'Noticias'],
+          ['anuncios', 'Anuncios'],
+          ['galeria', 'Galería'],
+        ].map(([id, etiqueta]) => (
+          <button key={id} type="button" role="tab" aria-selected={pestana === id} className={pestana === id ? 'activo' : ''} onClick={() => setPestana(id)} aria-label={`Abrir ${etiqueta}`}>
+            {etiqueta}
+          </button>
+        ))}
+      </div>
+      {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
       {error && <p className="aviso" role="alert">{error}</p>}
 
+      {pestana === 'blog' && <PanelBlog token={token} />}
+      {pestana === 'anuncios' && <PanelAnuncios token={token} />}
+      {pestana === 'galeria' && <PanelGaleria token={token} />}
+
+      {pestana === 'operacion' && (
+      <>
       <div className="rejilla-admin">
         <form className="panel-form" onSubmit={crearViaje}>
           <h2>Crear viaje</h2>
@@ -219,6 +239,8 @@ export default function Admin() {
           </table>
         </div>
       </section>
+      </>
+      )}
     </div>
   );
 }

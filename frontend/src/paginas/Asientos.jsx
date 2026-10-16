@@ -28,6 +28,9 @@ export default function Asientos() {
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [metodo, setMetodo] = useState('tarjeta');
+  const [tarjeta, setTarjeta] = useState({ numero: '', vence: '', cvv: '', nombre: '' });
+  const [celular, setCelular] = useState('');
 
   useEffect(() => {
     let vivo = true;
@@ -149,16 +152,36 @@ export default function Asientos() {
     }
   }
 
+  function referenciaDePago() {
+    if (metodo === 'tarjeta') {
+      const ultimos = tarjeta.numero.replace(/\D/g, '').slice(-4);
+      return `TARJ-${ultimos}-${referencia.slice(-6)}`;
+    }
+    if (metodo === 'payphone') return `PAY-${celular.replace(/\D/g, '').slice(-6)}-${referencia.slice(-4)}`;
+    if (metodo === 'efectivo') return `VENT-${referencia.slice(-8)}`;
+    return referencia;
+  }
+
+  function pagoValido() {
+    if (metodo === 'tarjeta') {
+      const numero = tarjeta.numero.replace(/\D/g, '');
+      return numero.length >= 15 && tarjeta.vence.length >= 4 && tarjeta.cvv.length >= 3 && tarjeta.nombre.trim().length > 2;
+    }
+    if (metodo === 'payphone') return celular.replace(/\D/g, '').length >= 10;
+    if (metodo === 'transferencia') return referencia.trim().length >= 4;
+    return true;
+  }
+
   async function pagar(event) {
     event.preventDefault();
-    if (!reserva || restante === 0) return;
+    if (!reserva || restante === 0 || !pagoValido()) return;
     setOcupado(true);
     setError('');
     try {
       const data = await solicitar(`/boletos/${reserva.codigo}/pagar`, {
         method: 'POST',
         token,
-        body: { referencia_ext: referencia },
+        body: { referencia_ext: referenciaDePago(), metodo },
       });
       setPago(data);
       setQr(data.qr_png_base64);
@@ -308,30 +331,82 @@ export default function Asientos() {
                       ? `Reserva ${reserva.codigo} vigente por ${cuentaRegresiva(restante)}`
                       : 'La reserva expiró'}
                   </p>
-                  <label>
-                    Referencia de pago simulada
-                    <input
-                      value={referencia}
-                      onChange={(e) => setReferencia(e.target.value)}
-                      required
-                      minLength={4}
-                      maxLength={64}
-                      aria-label="Referencia de pago simulada"
-                    />
-                  </label>
+                  <fieldset className="metodos">
+                    <legend>Método de pago</legend>
+                    {METODOS.map((opcion) => (
+                      <label key={opcion.id} className={metodo === opcion.id ? 'metodo activo' : 'metodo'}>
+                        <input
+                          type="radio"
+                          name="metodo"
+                          value={opcion.id}
+                          checked={metodo === opcion.id}
+                          onChange={() => setMetodo(opcion.id)}
+                        />
+                        <MetodoIcono id={opcion.id} />
+                        <span>
+                          <strong>{opcion.titulo}</strong>
+                          <small>{opcion.detalle}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                  {metodo === 'tarjeta' && (
+                    <div className="datos-pago">
+                      <label>
+                        Número de tarjeta
+                        <input inputMode="numeric" autoComplete="cc-number" aria-label="Número de tarjeta" value={tarjeta.numero} onChange={(e) => setTarjeta({ ...tarjeta, numero: e.target.value })} placeholder="ACCT-000015" />
+                      </label>
+                      <div className="dos">
+                        <label>
+                          Vence
+                          <input autoComplete="cc-exp" aria-label="Vencimiento" value={tarjeta.vence} onChange={(e) => setTarjeta({ ...tarjeta, vence: e.target.value })} placeholder="MM/AA" />
+                        </label>
+                        <label>
+                          CVV
+                          <input autoComplete="cc-csc" aria-label="Código de seguridad" value={tarjeta.cvv} onChange={(e) => setTarjeta({ ...tarjeta, cvv: e.target.value })} placeholder="123" />
+                        </label>
+                      </div>
+                      <label>
+                        Nombre en la tarjeta
+                        <input autoComplete="cc-name" aria-label="Nombre en la tarjeta" value={tarjeta.nombre} onChange={(e) => setTarjeta({ ...tarjeta, nombre: e.target.value })} />
+                      </label>
+                      <p className="meta">El número no sale de este navegador. El cargo es simulado.</p>
+                    </div>
+                  )}
+                  {metodo === 'transferencia' && (
+                    <div className="datos-pago">
+                      <p>Banco del Pacífico · Cooperativa La Maná · cuenta corriente 2100456789. Use esta referencia al transferir.</p>
+                      <label>
+                        Referencia de la transferencia
+                        <input value={referencia} onChange={(e) => setReferencia(e.target.value)} required minLength={4} maxLength={64} aria-label="Referencia de la transferencia" />
+                      </label>
+                    </div>
+                  )}
+                  {metodo === 'payphone' && (
+                    <div className="datos-pago">
+                      <label>
+                        Celular de la billetera
+                        <input inputMode="tel" aria-label="Celular PayPhone" value={celular} onChange={(e) => setCelular(e.target.value)} placeholder="0991234567" />
+                      </label>
+                      <p className="meta">En producción aquí se abriría PayPhone. Esta pasarela está simulada.</p>
+                    </div>
+                  )}
+                  {metodo === 'efectivo' && (
+                    <p className="aviso-ok">Pague en la ventanilla del terminal de La Maná antes de la salida. El QR es su orden de pago.</p>
+                  )}
                 </>
               )}
               {error && <p className="aviso" role="alert">{error}</p>}
-              {aviso && <p className="nota" role="status">{aviso}</p>}
+              {aviso && <p className="aviso-ok" role="status">{aviso}</p>}
               {!usuario && !reserva && (
-                <p className="nota">Para reservar necesitas <Link to={`/ingresar?siguiente=/viajes/${id}`}>ingresar</Link>.</p>
+                <p className="aviso-ok">Para reservar necesitas <Link to={`/ingresar?siguiente=/viajes/${id}`}>ingresar</Link>.</p>
               )}
               {reserva ? (
                 <div className="acciones">
                   <button
                     type="submit"
                     className="btn btn-arcilla"
-                    disabled={ocupado || restante === 0 || referencia.trim().length < 4}
+                    disabled={ocupado || restante === 0 || !pagoValido()}
                     aria-label="Pagar reserva"
                   >
                     Pagar {formatearPesos(reserva.precio)}
@@ -361,4 +436,25 @@ export default function Asientos() {
 function nuevaReferencia() {
   const aleatorio = crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
   return `SIM-${aleatorio}`;
+}
+
+const METODOS = [
+  { id: 'tarjeta', titulo: 'Tarjeta de crédito o débito', detalle: 'Cargo simulado, listo para una pasarela real' },
+  { id: 'transferencia', titulo: 'Transferencia bancaria', detalle: 'Banco del Pacífico' },
+  { id: 'payphone', titulo: 'PayPhone / billeteras', detalle: 'Confirme el cobro en el celular' },
+  { id: 'efectivo', titulo: 'Efectivo en ventanilla', detalle: 'Terminal de La Maná' },
+];
+
+function MetodoIcono({ id }) {
+  const comun = { width: 36, height: 24, viewBox: '0 0 36 24', 'aria-hidden': true };
+  if (id === 'tarjeta') {
+    return <svg {...comun}><rect width="36" height="24" rx="4" fill="#163e75" /><rect y="6" width="36" height="5" fill="#e4c98a" /></svg>;
+  }
+  if (id === 'transferencia') {
+    return <svg {...comun}><rect width="36" height="24" rx="4" fill="#0f3d32" /><path d="M8 16h20M12 8h12" stroke="#fff" strokeWidth="2" /></svg>;
+  }
+  if (id === 'payphone') {
+    return <svg {...comun}><rect x="10" y="1" width="16" height="22" rx="3" fill="#1f6f78" /><rect x="13" y="4" width="10" height="12" rx="1" fill="#f6f1e7" /></svg>;
+  }
+  return <svg {...comun}><rect width="36" height="24" rx="4" fill="#b5522a" /><circle cx="18" cy="12" r="5" fill="#f6f1e7" /></svg>;
 }
