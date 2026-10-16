@@ -4,6 +4,7 @@ import { solicitar } from '../api';
 import { useAuth } from '../contexto/AuthContext';
 import { ahoraBogotaInput, fechaBogota, formatearFechaHora, formatearPesos } from '../formato';
 import { PanelAnuncios, PanelBlog, PanelGaleria } from './AdminContenido';
+import { PanelEmisor, PanelFacturas } from './AdminFacturas';
 
 export default function Admin() {
   const { usuario, token } = useAuth();
@@ -117,10 +118,12 @@ export default function Admin() {
   return (
     <div className="pagina">
       <h1>Taquilla</h1>
-      <p className="lead">Salidas, tarifas, noticias, promociones y la galería de la cooperativa.</p>
+      <p className="lead">Salidas, tarifas, facturas, noticias, promociones y la galería de la cooperativa.</p>
       <div className="filtros" role="tablist" aria-label="Secciones de taquilla">
         {[
           ['operacion', 'Operación'],
+          ['facturas', 'Facturas'],
+          ['emisor', 'Emisor'],
           ['blog', 'Noticias'],
           ['anuncios', 'Anuncios'],
           ['galeria', 'Galería'],
@@ -133,6 +136,8 @@ export default function Admin() {
       {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
       {error && <p className="aviso" role="alert">{error}</p>}
 
+      {pestana === 'facturas' && <PanelFacturas token={token} />}
+      {pestana === 'emisor' && <PanelEmisor token={token} />}
       {pestana === 'blog' && <PanelBlog token={token} />}
       {pestana === 'anuncios' && <PanelAnuncios token={token} />}
       {pestana === 'galeria' && <PanelGaleria token={token} />}

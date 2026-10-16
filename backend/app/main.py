@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
-from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, tiempo_real, viajes
+from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, tiempo_real, viajes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("lamana")
@@ -51,6 +51,7 @@ app.include_router(boletos.router, prefix="/boletos", tags=["boletos"])
 app.include_router(admin.router, prefix="/admin", tags=["admin"])
 app.include_router(admin_contenido.router, prefix="/admin", tags=["admin"])
 app.include_router(contenido.router)
+app.include_router(facturacion.router)
 app.include_router(tiempo_real.router)
 Path("/app/medios").mkdir(parents=True, exist_ok=True)
 app.mount("/medios", StaticFiles(directory="/app/medios"), name="medios")

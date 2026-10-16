@@ -356,6 +356,19 @@ tfoot th { font-size: 1.15rem; }
 .metodo small { display: block; color: #5e584f; font-weight: 400; }
 .metodo.activo { border-color: var(--verde); box-shadow: inset 0 0 0 1px var(--verde); background: #f3faf3; }
 .datos-pago { display: grid; gap: 0.7rem; }
+.facturacion { border: 1px solid var(--linea); border-radius: 6px; padding: 0.8rem; display: grid; gap: 0.7rem; }
+.facturacion legend { font-weight: 700; padding: 0 0.3rem; }
+.ride-frame { width: 100%; height: 720px; border: 1px solid var(--linea); border-radius: 6px; background: white; margin-top: 0.8rem; }
+.estado { display: inline-block; padding: 0.12rem 0.5rem; border-radius: 4px; font-size: 0.82rem; font-weight: 700; text-transform: lowercase; }
+.estado-autorizada { background: #e5f6e5; color: #006b00; }
+.estado-firmada, .estado-generada { background: #fff6dc; color: #7a5b10; }
+.estado-rechazada { background: #fde8e4; color: #9a3412; }
+.acciones-factura { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.acciones-factura button {
+  min-height: 34px; border-radius: 4px; border: 1px solid var(--linea); background: white; cursor: pointer; padding: 0.15rem 0.6rem;
+}
+.filtros-factura { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: end; margin-bottom: 0.8rem; }
+.filtros-factura label { min-width: 150px; }
 
 .lista-admin { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.65rem; }
 .lista-admin li { background: #fff; border: 1px solid var(--linea); border-radius: 6px; padding: 0.85rem 0.95rem; display: grid; gap: 0.25rem; }

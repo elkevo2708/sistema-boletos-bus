@@ -40,6 +40,18 @@ export async function solicitar(ruta, opciones = {}) {
   return data;
 }
 
+export async function traerArchivo(ruta, token) {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const respuesta = await fetch(`/api${ruta}`, { headers });
+  if (!respuesta.ok) {
+    const error = new Error('No se pudo descargar el archivo');
+    error.status = respuesta.status;
+    throw error;
+  }
+  return respuesta.blob();
+}
+
 export function urlSocket(viajeId) {
   const protocolo = window.location.protocol === 'https:' ? 'wss' : 'ws';
   return `${protocolo}://${window.location.host}/ws/viajes/${viajeId}`;

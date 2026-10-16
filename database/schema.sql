@@ -216,6 +216,96 @@ CREATE TABLE galeria (
   KEY idx_galeria_categoria (categoria)
 ) ENGINE=InnoDB;
 
+CREATE TABLE clientes_facturacion (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  identificacion VARCHAR(20) NOT NULL,
+  tipo ENUM('cedula', 'ruc', 'pasaporte', 'consumidor_final') NOT NULL,
+  razon_social VARCHAR(300) NOT NULL,
+  direccion VARCHAR(300) NOT NULL,
+  email VARCHAR(180) NULL,
+  telefono VARCHAR(30) NULL,
+  actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_cliente_identificacion (identificacion)
+) ENGINE=InnoDB;
+
+CREATE TABLE emisor (
+  id TINYINT UNSIGNED PRIMARY KEY,
+  ruc CHAR(13) NOT NULL,
+  razon_social VARCHAR(300) NOT NULL,
+  nombre_comercial VARCHAR(300) NOT NULL,
+  establecimiento CHAR(3) NOT NULL,
+  punto_emision CHAR(3) NOT NULL,
+  direccion_matriz VARCHAR(300) NOT NULL,
+  obligado_contabilidad TINYINT(1) NOT NULL DEFAULT 1,
+  ambiente ENUM('pruebas', 'produccion') NOT NULL DEFAULT 'pruebas',
+  secuencial INT UNSIGNED NOT NULL DEFAULT 0,
+  tarifa_iva_pasaje DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
+  CONSTRAINT chk_emisor_id CHECK (id = 1),
+  CONSTRAINT chk_emisor_iva CHECK (tarifa_iva_pasaje >= 0 AND tarifa_iva_pasaje <= 100),
+  CONSTRAINT chk_emisor_secuencial CHECK (secuencial <= 999999999)
+) ENGINE=InnoDB;
+
+CREATE TABLE facturas (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  boleto_id BIGINT UNSIGNED NOT NULL,
+  usuario_id INT UNSIGNED NOT NULL,
+  emisor_ruc CHAR(13) NOT NULL,
+  emisor_razon_social VARCHAR(300) NOT NULL,
+  emisor_nombre_comercial VARCHAR(300) NOT NULL,
+  emisor_direccion VARCHAR(300) NOT NULL,
+  obligado_contabilidad TINYINT(1) NOT NULL,
+  establecimiento CHAR(3) NOT NULL,
+  punto_emision CHAR(3) NOT NULL,
+  secuencial INT UNSIGNED NOT NULL,
+  numero VARCHAR(17) NOT NULL,
+  clave_acceso CHAR(49) NOT NULL,
+  fecha_emision DATETIME NOT NULL,
+  ambiente ENUM('pruebas', 'produccion') NOT NULL,
+  tipo_identificacion ENUM('cedula', 'ruc', 'pasaporte', 'consumidor_final') NOT NULL,
+  identificacion_comprador VARCHAR(20) NOT NULL,
+  razon_social_comprador VARCHAR(300) NOT NULL,
+  direccion_comprador VARCHAR(300) NOT NULL,
+  email_comprador VARCHAR(180) NULL,
+  telefono_comprador VARCHAR(30) NULL,
+  subtotal DECIMAL(12, 2) NOT NULL,
+  iva DECIMAL(12, 2) NOT NULL,
+  total DECIMAL(12, 2) NOT NULL,
+  forma_pago CHAR(2) NOT NULL,
+  estado ENUM('generada', 'firmada', 'autorizada', 'rechazada') NOT NULL DEFAULT 'generada',
+  numero_autorizacion VARCHAR(49) NULL,
+  mensaje_sri VARCHAR(500) NULL,
+  firma_omitida TINYINT(1) NOT NULL DEFAULT 0,
+  xml_comprobante MEDIUMTEXT NOT NULL,
+  xml_autorizado MEDIUMTEXT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_factura_boleto (boleto_id),
+  UNIQUE KEY uk_factura_secuencial (establecimiento, punto_emision, secuencial),
+  UNIQUE KEY uk_factura_clave (clave_acceso),
+  KEY idx_factura_usuario (usuario_id, fecha_emision),
+  KEY idx_factura_estado (estado, fecha_emision),
+  CONSTRAINT fk_factura_boleto FOREIGN KEY (boleto_id) REFERENCES boletos (id),
+  CONSTRAINT fk_factura_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+) ENGINE=InnoDB;
+
+CREATE TABLE factura_detalles (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  factura_id BIGINT UNSIGNED NOT NULL,
+  codigo VARCHAR(32) NOT NULL,
+  descripcion VARCHAR(300) NOT NULL,
+  cantidad DECIMAL(12, 2) NOT NULL DEFAULT 1.00,
+  precio_unitario DECIMAL(12, 2) NOT NULL,
+  descuento DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+  tarifa_iva DECIMAL(5, 2) NOT NULL,
+  base_imponible DECIMAL(12, 2) NOT NULL,
+  valor_iva DECIMAL(12, 2) NOT NULL,
+  ruta VARCHAR(180) NULL,
+  salida DATETIME NULL,
+  asiento VARCHAR(10) NULL,
+  pasajero VARCHAR(180) NULL,
+  KEY idx_detalle_factura (factura_id),
+  CONSTRAINT fk_detalle_factura FOREIGN KEY (factura_id) REFERENCES facturas (id)
+) ENGINE=InnoDB;
+
 DELIMITER $$
 
 CREATE TRIGGER trg_boletos_before_insert
@@ -528,3 +618,30 @@ INSERT INTO galeria (titulo, descripcion, categoria, archivo) VALUES
   ('Terminal de La Maná', 'Andén de salida. Taquilla abierta de 05:00 a 21:00.', 'terminales', 'terminal-lamana.jpg'),
   ('Terminal en Quito', 'Llegada a Quitumbe en el turno de la madrugada.', 'terminales', 'terminal-quito.jpg'),
   ('Abordaje de madrugada', 'Pasajeros del turno extra de feriado.', 'terminales', 'noticia-horario.jpg');
+
+INSERT INTO emisor (
+  id, ruc, razon_social, nombre_comercial, establecimiento, punto_emision,
+  direccion_matriz, obligado_contabilidad, ambiente, secuencial, tarifa_iva_pasaje
+) VALUES (
+  1,
+  '1790012344001',
+  'COOPERATIVA DE TRANSPORTE LA MANA',
+  'TRANS LA MANA',
+  '001',
+  '001',
+  'Matriz, La Maná, Cotopaxi',
+  1,
+  'pruebas',
+  0,
+  0.00
+);
+
+INSERT INTO clientes_facturacion (identificacion, tipo, razon_social, direccion, email, telefono)
+VALUES (
+  '1710034065',
+  'cedula',
+  'MARÍA CEDEÑO PAREDES',
+  'La Maná, Cotopaxi',
+  'maria.cedeno@gmail.com',
+  '0994127992'
+);

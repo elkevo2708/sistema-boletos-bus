@@ -8,6 +8,7 @@ import Buscar from './paginas/Buscar';
 import Encomiendas from './paginas/Encomiendas';
 import Galeria from './paginas/Galeria';
 import Login from './paginas/Login';
+import MisFacturas from './paginas/MisFacturas';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/galeria" element={<Galeria />} />
         <Route path="/encomiendas" element={<Encomiendas />} />
         <Route path="/ingresar" element={<Login />} />
+        <Route path="/mis-facturas" element={<MisFacturas />} />
         <Route path="/admin" element={<Admin />} />
       </Route>
     </Routes>

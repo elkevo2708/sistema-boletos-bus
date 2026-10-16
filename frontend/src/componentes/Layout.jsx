@@ -65,6 +65,7 @@ export default function Layout() {
             <NavLink to="/admin" onClick={cerrarMenu}>Taquilla</NavLink>
             {usuario ? (
               <>
+                <NavLink to="/mis-facturas" onClick={cerrarMenu}>Mis facturas</NavLink>
                 <span className="quien">{usuario.nombre}</span>
                 <button type="button" className="enlace-salir" onClick={() => { cerrarMenu(); salir(); }} aria-label="Cerrar sesión">Salir</button>
               </>
@@ -93,6 +94,7 @@ export default function Layout() {
           <p><Link to="/noticias">Noticias</Link></p>
           <p><Link to="/galeria">Galería</Link></p>
           <p><Link to="/admin">Taquilla</Link></p>
+          <p><Link to="/mis-facturas">Mis facturas</Link></p>
         </div>
         <div>
           <p className="pie-titulo">Rutas</p>

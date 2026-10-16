@@ -1,3 +1,4 @@
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,12 +7,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencias import obtener_sesion, usuario_actual
+from app.emision import _leer, completar_emision, registrar_factura, resumen
 from app.errores import CodigoDuplicado, traducir_error_mysql
 from app.esquemas import PagarIn, ReservarIn
 from app.pagos import SolicitudPago, obtener_proveedor
 from app.presentacion import fila_a_dict
 from app.qr import png_base64
 from app.ws import publicar_asiento
+
+log = logging.getLogger("lamana.boletos")
 
 router = APIRouter()
 
@@ -172,6 +176,13 @@ async def pagar(
             text("UPDATE boletos SET estado = 'pagado' WHERE id = :id"),
             {"id": bloqueado["id"]},
         )
+        factura_id = await registrar_factura(
+            sesion,
+            boleto_id=int(bloqueado["id"]),
+            usuario_id=int(usuario["id"]),
+            comprador=datos.facturacion,
+            metodo=datos.metodo,
+        )
         await sesion.commit()
     except HTTPException:
         await sesion.rollback()
@@ -228,6 +239,11 @@ async def pagar(
         }
     )
     await publicar_asiento(sesion, int(detalle["viaje_id"]), int(detalle["asiento_id"]))
+    try:
+        factura = resumen(await completar_emision(sesion, factura_id))
+    except Exception:
+        log.exception("La factura %s quedó pendiente de autorización", factura_id)
+        factura = resumen(await _leer(sesion, factura_id))
     return {
         "codigo": datos_qr["codigo"],
         "estado": "pagado",
@@ -247,6 +263,7 @@ async def pagar(
             "mensaje": cobro.mensaje,
         },
         "qr_png_base64": qr,
+        "factura": factura,
     }
 
 

@@ -26,6 +26,8 @@ def traducir_error_mysql(exc: SQLAlchemyError) -> None:
             raise HTTPException(status_code=409, detail="La referencia de pago ya fue registrada") from exc
         if "uk_pago_boleto" in texto:
             raise HTTPException(status_code=409, detail="El boleto ya tiene un pago registrado") from exc
+        if "uk_factura_boleto" in texto:
+            raise HTTPException(status_code=409, detail="El boleto ya tiene una factura") from exc
         if "uk_usuarios_email" in texto:
             raise HTTPException(status_code=409, detail="El correo ya está registrado") from exc
         if "uk_usuarios_documento" in texto:

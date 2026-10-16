@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { solicitar, urlSocket } from '../api';
+import { solicitar, traerArchivo, urlSocket } from '../api';
+import FacturacionCampos from '../componentes/FacturacionCampos';
 import { useAuth } from '../contexto/AuthContext';
 import { cuentaRegresiva, formatearFechaHora, formatearPesos, instanteColombia } from '../formato';
+import { identificacionValida } from '../identificacion';
 
 const ETIQUETA = {
   libre: 'libre',
@@ -31,6 +33,15 @@ export default function Asientos() {
   const [metodo, setMetodo] = useState('tarjeta');
   const [tarjeta, setTarjeta] = useState({ numero: '', vence: '', cvv: '', nombre: '' });
   const [celular, setCelular] = useState('');
+  const [facturaDatos, setFacturaDatos] = useState({
+    tipo: 'cedula',
+    identificacion: '',
+    razon_social: '',
+    direccion: '',
+    email: '',
+    telefono: '',
+  });
+  const [rideUrl, setRideUrl] = useState('');
 
   useEffect(() => {
     let vivo = true;
@@ -92,6 +103,16 @@ export default function Asientos() {
       socket?.close();
     };
   }, [id]);
+
+  useEffect(() => {
+    if (usuario?.email) {
+      setFacturaDatos((actual) => (actual.email ? actual : { ...actual, email: usuario.email }));
+    }
+  }, [usuario]);
+
+  useEffect(() => () => {
+    if (rideUrl) URL.revokeObjectURL(rideUrl);
+  }, [rideUrl]);
 
   useEffect(() => {
     if (!reserva?.reservado_hasta || qr) return undefined;
@@ -162,7 +183,17 @@ export default function Asientos() {
     return referencia;
   }
 
+  function facturacionLista() {
+    const direccion = facturaDatos.direccion.trim().length >= 4;
+    const correo = !facturaDatos.email.trim() || facturaDatos.email.includes('@');
+    if (facturaDatos.tipo === 'consumidor_final') return direccion && correo;
+    return direccion && correo
+      && identificacionValida(facturaDatos.tipo, facturaDatos.identificacion)
+      && facturaDatos.razon_social.trim().length >= 3;
+  }
+
   function pagoValido() {
+    if (!facturacionLista()) return false;
     if (metodo === 'tarjeta') {
       const numero = tarjeta.numero.replace(/\D/g, '');
       return numero.length >= 15 && tarjeta.vence.length >= 4 && tarjeta.cvv.length >= 3 && tarjeta.nombre.trim().length > 2;
@@ -181,10 +212,25 @@ export default function Asientos() {
       const data = await solicitar(`/boletos/${reserva.codigo}/pagar`, {
         method: 'POST',
         token,
-        body: { referencia_ext: referenciaDePago(), metodo },
+        body: {
+          referencia_ext: referenciaDePago(),
+          metodo,
+          facturacion: {
+            tipo: facturaDatos.tipo,
+            identificacion: facturaDatos.identificacion.trim(),
+            razon_social: facturaDatos.razon_social.trim(),
+            direccion: facturaDatos.direccion.trim(),
+            email: facturaDatos.email.trim() || null,
+            telefono: facturaDatos.telefono.trim() || null,
+          },
+        },
       });
       setPago(data);
       setQr(data.qr_png_base64);
+      if (data.factura?.id) {
+        const blob = await traerArchivo(`/facturacion/${data.factura.id}/ride`, token);
+        setRideUrl(URL.createObjectURL(blob));
+      }
       sessionStorage.removeItem(`viaandina_reserva_${id}`);
     } catch (err) {
       setError(err.message);
@@ -289,6 +335,23 @@ export default function Asientos() {
               </p>
               <img src={`data:image/png;base64,${qr}`} alt={`Código QR del boleto ${pago.codigo}`} />
               <p className="meta">Referencia {pago.pago.referencia_ext}</p>
+              {pago.factura && (
+                <div className="factura-exito">
+                  <p className="sobrelinea">Factura {pago.factura.numero}</p>
+                  <p>
+                    {pago.factura.razon_social_comprador}<br />
+                    Clave de acceso {pago.factura.clave_acceso}
+                  </p>
+                  <p>
+                    <span className={`estado estado-${pago.factura.estado}`}>{pago.factura.estado}</span>
+                    {' '}· IVA {formatearPesos(pago.factura.iva)} · total {formatearPesos(pago.factura.total)}
+                  </p>
+                  <p><Link to="/mis-facturas">Mis facturas</Link></p>
+                  {rideUrl && (
+                    <iframe className="ride-frame" title={`RIDE ${pago.factura.numero}`} src={rideUrl} />
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <form onSubmit={reserva ? pagar : reservar}>
@@ -354,21 +417,21 @@ export default function Asientos() {
                     <div className="datos-pago">
                       <label>
                         Número de tarjeta
-                        <input inputMode="numeric" autoComplete="cc-number" aria-label="Número de tarjeta" value={tarjeta.numero} onChange={(e) => setTarjeta({ ...tarjeta, numero: e.target.value })} placeholder="ACCT-000015" />
+                        <input inputMode="numeric" autoComplete="off" aria-label="Número de tarjeta" value={tarjeta.numero} onChange={(e) => setTarjeta({ ...tarjeta, numero: e.target.value })} placeholder="ACCT-000015" />
                       </label>
                       <div className="dos">
                         <label>
                           Vence
-                          <input autoComplete="cc-exp" aria-label="Vencimiento" value={tarjeta.vence} onChange={(e) => setTarjeta({ ...tarjeta, vence: e.target.value })} placeholder="MM/AA" />
+                          <input autoComplete="off" aria-label="Vencimiento" value={tarjeta.vence} onChange={(e) => setTarjeta({ ...tarjeta, vence: e.target.value })} placeholder="MM/AA" />
                         </label>
                         <label>
                           CVV
-                          <input autoComplete="cc-csc" aria-label="Código de seguridad" value={tarjeta.cvv} onChange={(e) => setTarjeta({ ...tarjeta, cvv: e.target.value })} placeholder="123" />
+                          <input autoComplete="off" aria-label="Código de seguridad" value={tarjeta.cvv} onChange={(e) => setTarjeta({ ...tarjeta, cvv: e.target.value })} placeholder="123" />
                         </label>
                       </div>
                       <label>
                         Nombre en la tarjeta
-                        <input autoComplete="cc-name" aria-label="Nombre en la tarjeta" value={tarjeta.nombre} onChange={(e) => setTarjeta({ ...tarjeta, nombre: e.target.value })} />
+                        <input autoComplete="off" aria-label="Nombre en la tarjeta" value={tarjeta.nombre} onChange={(e) => setTarjeta({ ...tarjeta, nombre: e.target.value })} />
                       </label>
                       <p className="meta">El número no sale de este navegador. El cargo es simulado.</p>
                     </div>
@@ -394,6 +457,7 @@ export default function Asientos() {
                   {metodo === 'efectivo' && (
                     <p className="aviso-ok">Pague en la ventanilla del terminal de La Maná antes de la salida. El QR es su orden de pago.</p>
                   )}
+                  <FacturacionCampos valor={facturaDatos} onChange={setFacturaDatos} token={token} />
                 </>
               )}
               {error && <p className="aviso" role="alert">{error}</p>}

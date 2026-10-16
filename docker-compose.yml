@@ -41,6 +41,18 @@ services:
       ACCESS_TOKEN_MINUTOS: "60"
       REFRESH_TOKEN_DIAS: "7"
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173
+      IDENTIFICACION_LOOKUP_URL: ""
+      IDENTIFICACION_LOOKUP_API_KEY: ""
+      FIRMA_P12_RUTA: ""
+      FIRMA_P12_CLAVE: ""
+      SRI_MODO: offline
+      SRI_RECEPCION_URL: ""
+      SRI_AUTORIZACION_URL: ""
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_USUARIO: ""
+      SMTP_CLAVE: ""
+      SMTP_DESDE: facturacion@lamana.ec
     ports:
       - "8000:8000"
     depends_on:
