@@ -5,6 +5,7 @@ import Asientos from './paginas/Asientos';
 import Blog from './paginas/Blog';
 import BlogDetalle from './paginas/BlogDetalle';
 import Buscar from './paginas/Buscar';
+import Encomiendas from './paginas/Encomiendas';
 import Galeria from './paginas/Galeria';
 import Login from './paginas/Login';
 
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/noticias" element={<Blog />} />
         <Route path="/noticias/:slug" element={<BlogDetalle />} />
         <Route path="/galeria" element={<Galeria />} />
+        <Route path="/encomiendas" element={<Encomiendas />} />
         <Route path="/ingresar" element={<Login />} />
         <Route path="/admin" element={<Admin />} />
       </Route>

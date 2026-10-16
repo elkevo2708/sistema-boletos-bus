@@ -355,7 +355,7 @@ INSERT INTO roles (nombre, descripcion) VALUES
 
 -- Contraseña: Admin123! (bcrypt). Las credenciales están en el README.
 INSERT INTO usuarios (rol_id, nombre, apellido, documento, email, password_hash, telefono)
-SELECT r.id, 'Ana', 'Beltrán', '1000000001', 'admin@viaandina.local',
+SELECT r.id, 'Ana', 'Beltrán', '1000000001', 'admin@lamana.local',
        '$2b$12$0LBQd7cfqT4mme0J5F3ueO00UF4KUMbKjnLmuQVOz1Z07BCDavhly',
        '3000000001'
   FROM roles r
@@ -517,6 +517,7 @@ INSERT INTO anuncios (titulo, mensaje, enlace, tipo, activo, inicio, fin) VALUES
 );
 
 INSERT INTO galeria (titulo, descripcion, categoria, archivo) VALUES
+  ('Unidad La Maná', 'Librea naranja y negra de la cooperativa.', 'buses', 'bus-lamana.jpg'),
   ('Unidad de la costa', 'Disco 101, un piso, cuarenta puestos. Cubre La Maná, Quevedo y Latacunga.', 'buses', 'bus-costa.jpg'),
   ('Salón de pasajeros', 'Butacas de tela y pasillo central. Las ventanas son los asientos de columna 1 y 4.', 'buses', 'bus-interior.jpg'),
   ('Unidad de dos pisos', 'Disco 202. Sube a Santo Domingo, Ambato y la ruta larga a Guayaquil.', 'buses', 'bus-dos-pisos.jpg'),

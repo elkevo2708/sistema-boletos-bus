@@ -157,12 +157,27 @@ export default function Buscar() {
             <p className="sobrelinea">La cooperativa</p>
             <h2>Del subtrópico de Cotopaxi a la costa y a la sierra.</h2>
             <p>
-              Salimos del terminal de la avenida Amazonas, en La Maná. Un disco baja a Quevedo y sigue a Guayaquil.
+              Salimos de la matriz en La Maná. Un disco baja a Quevedo y sigue a Guayaquil.
               El otro sube a Latacunga, Santo Domingo, Ambato y Quito. El pasaje se cobra por asiento y el QR es el boleto.
             </p>
             <Link className="btn btn-arcilla" to="/galeria">Ver la flota</Link>
           </div>
-          <img src="/medios/bus-costa.jpg" alt="Unidad de la cooperativa en la vía entre La Maná y Quevedo" />
+          <img src="/bus-lamana.jpg" alt="Unidad naranja y negra de Trans La Maná" />
+        </div>
+      </section>
+
+      <section className="pagina" id="encomiendas">
+        <div className="encomiendas">
+          <img src="/encomiendas-lamana.png" alt="Afiche de encomiendas de Trans La Maná" />
+          <div>
+            <p className="sobrelinea">Encomiendas</p>
+            <h2>Paquetes entre la costa y la sierra.</h2>
+            <p>
+              La cobertura del afiche llega a La Maná, Quevedo, Quinsaloma, Moraspungo,
+              Latacunga, Ambato, Quito, Guayaquil, Durán y Empalme.
+            </p>
+            <Link className="btn btn-pino" to="/encomiendas">Ver cobertura y teléfonos</Link>
+          </div>
         </div>
       </section>
 
@@ -301,8 +316,8 @@ export default function Buscar() {
         </div>
         <div className="rejilla-flota">
           <figure>
-            <img src="/medios/bus-costa.jpg" alt="Disco de un piso usado en la ruta a Quevedo" />
-            <figcaption>Disco de un piso · costa y La Maná</figcaption>
+            <img src="/bus-lamana.jpg" alt="Unidad naranja y negra de Trans La Maná" />
+            <figcaption>Librea de la cooperativa</figcaption>
           </figure>
           <figure>
             <img src="/medios/bus-interior.jpg" alt="Butacas y pasillo central de la unidad" />
@@ -345,9 +360,9 @@ export default function Buscar() {
         </div>
         <div className="rejilla-oficinas">
           <article>
-            <h3>La Maná</h3>
-            <p>Terminal terrestre, avenida Amazonas y 19 de Mayo. Taquilla de 05:00 a 21:00.</p>
-            <p><a href="tel:+59332680142">+593 3 268 0142</a></p>
+            <h3>Matriz La Maná</h3>
+            <p>Taquilla de 05:00 a 21:00. También hay punto en Quevedo, Guayaquil y Durán.</p>
+            <p><a href="tel:+593994127992">099 412 7992</a></p>
           </article>
           <article>
             <h3>Quevedo</h3>

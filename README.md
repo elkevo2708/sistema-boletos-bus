@@ -27,7 +27,7 @@ docker compose up --build
 
 | Campo | Valor |
 | --- | --- |
-| Correo | `admin@viaandina.local` |
+| Correo | `admin@lamana.local` |
 | Contraseña | `Admin123!` |
 | Documento | `1000000001` |
 
@@ -37,7 +37,7 @@ La contraseña se guarda con bcrypt. El cliente se registra desde **Ingresar →
 
 1. En el inicio, elige origen, destino y fecha. Mañana hay salidas de prueba, por ejemplo La Maná → Quevedo y La Maná → Latacunga.
 2. La franja y la ventana de promoción salen de los anuncios vigentes. Se pueden cerrar; quedan ocultas en esa pestaña del navegador.
-3. **Noticias** lista las publicaciones y abre cada nota. **Galería** muestra buses, destinos y terminales; al pulsar una foto se abre el visor.
+3. **Noticias** lista las publicaciones y abre cada nota. **Galería** muestra la unidad real, destinos y terminales; al pulsar una foto se abre el visor. **Encomiendas** muestra la cobertura (La Maná, Quevedo, Quinsaloma, Moraspungo, Latacunga, Ambato, Quito, Guayaquil, Durán y Empalme) y los teléfonos: matriz 099 412 7992, Quevedo 098 040 5468, Guayaquil 099 117 5522, Durán 099 117 2085.
 4. En el mapa, verde es libre, azul es el asiento elegido, gris es ocupado y el rayado es bloqueado. El mapa se actualiza en vivo por `/ws/viajes/{id}`.
 5. Reserva (10 minutos) y elige el método: tarjeta, transferencia, PayPhone o efectivo en ventanilla. El cobro está simulado. El número de tarjeta no sale del navegador. El backend marca el boleto como pagado y devuelve el QR en PNG.
 6. En **Taquilla**, la cuenta administradora crea viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día y administra noticias, anuncios e imágenes.
