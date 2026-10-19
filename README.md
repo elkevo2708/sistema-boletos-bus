@@ -104,10 +104,11 @@ La cédula se valida con el módulo 10 y el RUC de persona natural, sociedad pri
 La razón social se busca en este orden:
 
 1. La tabla `clientes_facturacion`, que guarda identificación, tipo, razón social, dirección, correo y teléfono de compras anteriores.
-2. Un proveedor externo opcional, solo si existen `IDENTIFICACION_LOOKUP_URL` y, si el servicio lo pide, `IDENTIFICACION_LOOKUP_API_KEY`. La llamada es `GET` con `tipo` e `identificacion` y el encabezado `Authorization: Bearer …`. La respuesta tiene que ser JSON con `razon_social` y, si vienen, `direccion`, `email` y `telefono`.
-3. Si no hay datos, la persona los escribe a mano.
+2. El proveedor de `IDENTIFICACION_LOOKUP_URL`, con el método, la cabecera y el mapeo de campos de la sección Consulta de cédula.
+3. El catálogo de demostración, solo si esa URL está vacía.
+4. Si no hay datos, la persona los escribe a mano. El aviso es «No encontrado, ingréselo manualmente.»
 
-Hay que contratar un servicio de consulta de cédula o RUC para tener nombres que no estén ya en `clientes_facturacion`. Este sistema no descarga ni interpreta páginas del SRI ni del Registro Civil. La fila de ejemplo `1710034065` / María Cedeño Paredes es semilla de demostración, no una consulta a un registro público.
+Hay que contratar un servicio de consulta de cédula o RUC para tener nombres que no estén ya en `clientes_facturacion` ni en el catálogo de demostración. Este sistema no descarga ni interpreta páginas del SRI ni del Registro Civil. La fila `1710034065` / María Cedeño Paredes es semilla local, no una consulta a un registro público.
 
 ## Qué garantiza que no se venda de más
 
