@@ -220,6 +220,16 @@ a.btn-oro { color: var(--marino); }
 .pregunta.abierta { border-color: var(--verde); }
 
 .resultados { padding-top: 1rem; }
+.buscando, .vacio {
+  background: #fff; border: 1px solid var(--linea); border-radius: 6px; padding: 1.1rem 1.15rem; margin-bottom: 1rem;
+}
+.vacio { display: grid; gap: 0.75rem; }
+.vacio p { margin: 0; }
+.fechas-siguientes { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fechas-siguientes button {
+  min-height: 44px; border-radius: 4px; border: 1px solid var(--verde); background: #f3faf3;
+  color: var(--verde-oscuro); font-weight: 700; padding: 0.35rem 0.8rem; cursor: pointer;
+}
 .lista-viajes { display: grid; gap: 0.85rem; }
 .tiquete {
   display: grid; grid-template-columns: 1fr 240px; overflow: hidden; border-radius: 6px;
@@ -432,6 +442,7 @@ tfoot th { font-size: 1.15rem; }
 
 @media (max-width: 980px) {
   .panel-busqueda, .empresa, .rejilla-destinos, .atajos-ruta, .pasos ol, .rejilla-flota, .cifras, .pie { grid-template-columns: 1fr 1fr; }
+  .panel-busqueda .btn-buscar { grid-column: 1 / -1; width: 100%; }
   .rejilla-servicios, .rejilla-promos, .rejilla-oficinas { grid-template-columns: 1fr 1fr; }
   .menu-btn { display: inline-block; }
   .nav {
@@ -444,6 +455,7 @@ tfoot th { font-size: 1.15rem; }
 }
 
 @media (max-width: 720px) {
+  .panel-busqueda .btn-buscar { width: 100%; }
   .panel-busqueda, .tiquete, .asientos-layout, .rejilla-admin, .empresa,
   .rejilla-destinos, .atajos-ruta, .pasos ol, .rejilla-flota, .cifras,
   .rejilla-servicios, .rejilla-promos, .rejilla-oficinas, .pie, .dos { grid-template-columns: 1fr; }

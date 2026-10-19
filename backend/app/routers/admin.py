@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencias import exigir_admin, obtener_sesion
+from app.horarios import generar_salidas
 from app.errores import traducir_error_mysql
 from app.esquemas import BusEstadoIn, BusIn, CiudadIn, RutaIn, TarifaIn, ViajeIn
 from app.presentacion import fila_a_dict, limpiar
@@ -491,3 +492,9 @@ async def ventas_del_dia(
         "filas": registros,
         "total": f"{total:.2f}",
     }
+
+
+@router.post("/horarios/generar")
+async def generar_horario(_: dict = Depends(exigir_admin)):
+    creados = await generar_salidas()
+    return {"creados": creados, "dias": 30}

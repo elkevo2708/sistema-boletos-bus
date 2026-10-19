@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
+from app.horarios import generar_salidas
 from app.migraciones import asegurar_esquema
 from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, tiempo_real, viajes
 
@@ -25,7 +26,8 @@ async def vida(_app: FastAPI):
             async with engine.connect() as conexion:
                 await conexion.execute(text("SELECT 1"))
             await asegurar_esquema()
-            log.info("Conexión a MySQL lista")
+            creados = await generar_salidas()
+            log.info("Conexión a MySQL lista. Salidas nuevas del horario: %s", creados)
             break
         except Exception as exc:
             ultimo = exc

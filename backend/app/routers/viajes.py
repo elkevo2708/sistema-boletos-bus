@@ -49,11 +49,48 @@ async def buscar_viajes(
                    AND r.destino_id = :destino
                    AND v.salida >= :desde
                    AND v.salida < DATE_ADD(:desde, INTERVAL 1 DAY)
+                   AND v.salida > NOW()
                    AND v.estado = 'programado'
                  ORDER BY v.salida
                 """
             ),
             {"origen": origen, "destino": destino, "desde": fecha},
+        )
+    ).mappings().all()
+    return [fila_a_dict(fila) for fila in filas]
+
+
+@router.get("/proximas")
+async def proximas_fechas(
+    origen: int = Query(gt=0),
+    destino: int = Query(gt=0),
+    desde: date | None = Query(default=None),
+    limite: int = Query(default=4, ge=1, le=8),
+    sesion: AsyncSession = Depends(obtener_sesion),
+):
+    if origen == destino:
+        raise HTTPException(status_code=422, detail="El origen y el destino deben ser distintos")
+    filas = (
+        await sesion.execute(
+            text(
+                """
+                SELECT fecha, salidas
+                  FROM (
+                        SELECT DATE(v.salida) AS fecha, COUNT(*) AS salidas
+                          FROM viajes v
+                          JOIN rutas r ON r.id = v.ruta_id
+                         WHERE r.origen_id = :origen
+                           AND r.destino_id = :destino
+                           AND v.estado = 'programado'
+                           AND v.salida > NOW()
+                           AND DATE(v.salida) <> COALESCE(:desde, CURDATE())
+                         GROUP BY DATE(v.salida)
+                       ) fechas
+                 ORDER BY (fecha > COALESCE(:desde, CURDATE())) DESC, fecha
+                 LIMIT :limite
+                """
+            ),
+            {"origen": origen, "destino": destino, "desde": desde, "limite": limite},
         )
     ).mappings().all()
     return [fila_a_dict(fila) for fila in filas]

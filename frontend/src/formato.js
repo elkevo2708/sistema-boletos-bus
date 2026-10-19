@@ -1,8 +1,9 @@
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const ZONA_ECUADOR = 'America/Guayaquil';
 
 export function fechaBogota(dias = 0) {
   const formato = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
+    timeZone: ZONA_ECUADOR,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -12,7 +13,7 @@ export function fechaBogota(dias = 0) {
 
 export function ahoraBogotaInput() {
   const formato = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
+    timeZone: ZONA_ECUADOR,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -30,6 +31,13 @@ export function formatearFechaHora(valor) {
   const [, mes, dia] = fecha.split('-');
   const hora = (horaCompleta || '').slice(0, 5);
   return `${Number(dia)} ${MESES[Number(mes) - 1]} · ${hora}`;
+}
+
+export function formatearDia(valor) {
+  if (!valor) return '';
+  const [fecha] = String(valor).split('T');
+  const [, mes, dia] = fecha.split('-');
+  return `${Number(dia)} ${MESES[Number(mes) - 1]}`;
 }
 
 export function formatearDinero(valor) {

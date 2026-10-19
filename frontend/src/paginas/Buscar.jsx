@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
-import { fechaBogota, formatearFechaHora, formatearDinero } from '../formato';
+import { fechaBogota, formatearDia, formatearFechaHora, formatearDinero } from '../formato';
 
 const RUTAS = [
   ['La Maná', 'Quevedo', 'Unos 75 minutos por la vía plana hacia Los Ríos.'],
@@ -30,8 +30,9 @@ export default function Buscar() {
   const [ciudades, setCiudades] = useState([]);
   const [origen, setOrigen] = useState('');
   const [destino, setDestino] = useState('');
-  const [fecha, setFecha] = useState(fechaBogota(1));
+  const [fecha, setFecha] = useState(fechaBogota(0));
   const [viajes, setViajes] = useState(null);
+  const [proximas, setProximas] = useState([]);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
   const [auto, setAuto] = useState(true);
@@ -56,34 +57,54 @@ export default function Buscar() {
     solicitar('/anuncios').then(setAnuncios).catch(() => {});
   }, []);
 
-  async function buscar(event, valores) {
+  function irAResultados() {
+    document.getElementById('rutas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function buscar(event, valores, desplazar = Boolean(event)) {
     event?.preventDefault();
     const o = valores?.origen ?? origen;
     const d = valores?.destino ?? destino;
     const f = valores?.fecha ?? fecha;
-    if (!o || !d || !f) return;
+    if (desplazar) irAResultados();
+    if (!o || !d || !f) {
+      setViajes(null);
+      setProximas([]);
+      setError('Elige origen, destino y fecha.');
+      return;
+    }
     if (o === d) {
+      setViajes(null);
+      setProximas([]);
       setError('Elige un destino distinto al origen.');
-      setViajes([]);
       return;
     }
     setCargando(true);
     setError('');
+    setViajes(null);
+    setProximas([]);
     try {
-      const data = await solicitar(`/viajes?origen=${o}&destino=${d}&fecha=${f}`);
+      const [data, fechas] = await Promise.all([
+        solicitar(`/viajes?origen=${o}&destino=${d}&fecha=${f}`),
+        solicitar(`/viajes/proximas?origen=${o}&destino=${d}&desde=${f}`).catch(() => []),
+      ]);
       setViajes(data);
+      setProximas(Array.isArray(fechas) ? fechas : []);
     } catch (err) {
-      setViajes([]);
-      setError(err.message);
+      setViajes(null);
+      setProximas([]);
+      const red = err?.message === 'Failed to fetch' || err?.message === 'NetworkError when attempting to fetch resource.';
+      setError(red ? 'No se pudo consultar las salidas. Inténtalo de nuevo.' : err.message);
     } finally {
       setCargando(false);
+      if (desplazar) irAResultados();
     }
   }
 
   useEffect(() => {
     if (!auto || !origen || !destino) return;
     setAuto(false);
-    buscar(null, { origen, destino, fecha });
+    buscar(null, { origen, destino, fecha }, false);
   }, [auto, origen, destino, fecha]);
 
   function intercambiar() {
@@ -97,8 +118,20 @@ export default function Buscar() {
     if (!o || !d) return;
     setOrigen(String(o.id));
     setDestino(String(d.id));
-    buscar(null, { origen: String(o.id), destino: String(d.id), fecha });
-    document.getElementById('rutas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    buscar(null, { origen: String(o.id), destino: String(d.id), fecha }, true);
+  }
+
+  function irAFecha(dia) {
+    setFecha(dia);
+    buscar(null, { origen, destino, fecha: dia }, true);
+  }
+
+  function buscarRegreso() {
+    const salida = destino;
+    const llegada = origen;
+    setOrigen(salida);
+    setDestino(llegada);
+    buscar(null, { origen: salida, destino: llegada, fecha }, true);
   }
 
   const nombre = (id) => ciudades.find((ciudad) => String(ciudad.id) === String(id));
@@ -111,10 +144,10 @@ export default function Buscar() {
           <h1>Viaja desde La Maná con el asiento ya elegido.</h1>
           <p className="lead">Salidas a Quevedo, Latacunga, Quito, Ambato y Guayaquil. Reserva en línea y aborda con tu código QR.</p>
         </div>
-        <form id="buscar" className="panel-busqueda" onSubmit={buscar}>
+        <form id="buscar" className="panel-busqueda" noValidate onSubmit={buscar}>
           <label>
             Origen
-            <select value={origen} onChange={(e) => setOrigen(e.target.value)} required aria-label="Ciudad de origen">
+            <select value={origen} onChange={(e) => setOrigen(e.target.value)} aria-label="Ciudad de origen">
               <option value="">Selecciona</option>
               {ciudades.map((ciudad) => (
                 <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre} · {ciudad.departamento}</option>
@@ -124,7 +157,7 @@ export default function Buscar() {
           <button type="button" className="intercambio" onClick={intercambiar} aria-label="Intercambiar origen y destino">⇄</button>
           <label>
             Destino
-            <select value={destino} onChange={(e) => setDestino(e.target.value)} required aria-label="Ciudad de destino">
+            <select value={destino} onChange={(e) => setDestino(e.target.value)} aria-label="Ciudad de destino">
               <option value="">Selecciona</option>
               {ciudades.map((ciudad) => (
                 <option key={ciudad.id} value={ciudad.id} disabled={String(ciudad.id) === origen}>
@@ -135,9 +168,9 @@ export default function Buscar() {
           </label>
           <label>
             Fecha
-            <input type="date" value={fecha} min={fechaBogota(0)} onChange={(e) => setFecha(e.target.value)} required aria-label="Fecha de salida" />
+            <input type="date" value={fecha} min={fechaBogota(0)} onChange={(e) => setFecha(e.target.value)} aria-label="Fecha de salida" />
           </label>
-          <button type="submit" className="btn btn-arcilla" aria-label="Buscar viajes" disabled={cargando}>
+          <button type="submit" className="btn btn-arcilla btn-buscar" aria-label="Buscar pasajes" disabled={cargando}>
             {cargando ? 'Buscando…' : 'Buscar pasajes'}
           </button>
         </form>
@@ -146,7 +179,7 @@ export default function Buscar() {
 
       <section className="cifras" aria-label="La cooperativa en cifras">
         <article><strong>7</strong><span>Ciudades en la red</span></article>
-        <article><strong>2</strong><span>Discos en servicio</span></article>
+        <article><strong>23</strong><span>Discos en servicio</span></article>
         <article><strong>40</strong><span>Puestos por unidad</span></article>
         <article><strong>10</strong><span>Minutos de reserva</span></article>
       </section>
@@ -243,14 +276,18 @@ export default function Buscar() {
         </section>
       )}
 
-      <section className="pagina resultados" id="rutas" aria-live="polite">
+      <section className="pagina resultados" id="rutas" aria-live="polite" aria-busy={cargando}>
         <div className="seccion-cabeza">
           <div>
             <p className="sobrelinea">Horarios</p>
             <h2>
-              {viajes?.length
+              {cargando && 'Buscando salidas…'}
+              {!cargando && viajes?.length
                 ? `${viajes.length} salida${viajes.length === 1 ? '' : 's'} · ${nombre(origen)?.nombre ?? ''} → ${nombre(destino)?.nombre ?? ''}`
-                : 'Salidas del día'}
+                : null}
+              {!cargando && viajes && viajes.length === 0 && 'No hay salidas para esa fecha'}
+              {!cargando && !viajes && !error && 'Salidas del día'}
+              {!cargando && error && !viajes && 'No se pudo buscar'}
             </h2>
           </div>
         </div>
@@ -262,7 +299,38 @@ export default function Buscar() {
             </button>
           ))}
         </div>
-        {viajes && viajes.length === 0 && <p>No hay salidas para esa ruta y fecha. Prueba otro día o una de las rutas de arriba.</p>}
+        {error && <p className="aviso" role="alert">{error}</p>}
+        {cargando && <p className="buscando" role="status">Buscando salidas para esa ruta.</p>}
+        {!cargando && viajes && viajes.length === 0 && (
+          <div className="vacio" role="status">
+            <p>No hay salidas para esa fecha.</p>
+            {proximas.length > 0 && (
+              <>
+                <p>Estas fechas sí tienen cupo en {nombre(origen)?.nombre} → {nombre(destino)?.nombre}.</p>
+                <div className="fechas-siguientes">
+                  {proximas.map((item) => (
+                    <button
+                      type="button"
+                      key={item.fecha}
+                      onClick={() => irAFecha(String(item.fecha).slice(0, 10))}
+                      aria-label={`Buscar el ${formatearDia(item.fecha)}`}
+                    >
+                      {formatearDia(item.fecha)} · {item.salidas} salida{Number(item.salidas) === 1 ? '' : 's'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <button
+              type="button"
+              className="btn btn-pino"
+              onClick={buscarRegreso}
+              aria-label={`Buscar el regreso de ${nombre(destino)?.nombre ?? 'destino'} a ${nombre(origen)?.nombre ?? 'origen'}`}
+            >
+              Buscar el regreso: {nombre(destino)?.nombre} → {nombre(origen)?.nombre}
+            </button>
+          </div>
+        )}
         <div className="lista-viajes">
           {viajes?.map((viaje) => (
             <article className="tiquete" key={viaje.id}>

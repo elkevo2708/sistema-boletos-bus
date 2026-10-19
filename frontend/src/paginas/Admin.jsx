@@ -156,6 +156,23 @@ export default function Admin() {
     }
   }
 
+  async function generarHorario() {
+    setError('');
+    setMensaje('');
+    setOcupado(true);
+    try {
+      const resultado = await solicitar('/admin/horarios/generar', { method: 'POST', token });
+      setMensaje(resultado.creados
+        ? `Se programaron ${resultado.creados} salidas nuevas para los próximos 30 días.`
+        : 'El horario de los próximos 30 días ya estaba completo.');
+      await recargarCatalogo();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   async function consultarVentas(event) {
     event?.preventDefault();
     setOcupado(true);
@@ -275,6 +292,14 @@ export default function Admin() {
           <button type="submit" className="btn btn-pino" disabled={ocupado} aria-label="Actualizar tarifa">Actualizar tarifa</button>
         </form>
       </div>
+
+      <section className="panel-form">
+        <h2>Horario recurrente</h2>
+        <p className="meta">Cada par de ciudades tiene dos salidas al día. Generar completa los próximos 30 días y no duplica las que ya existen.</p>
+        <button type="button" className="btn btn-pino" onClick={generarHorario} disabled={ocupado} aria-label="Generar salidas de los próximos 30 días">
+          Generar salidas
+        </button>
+      </section>
 
       <section className="panel-form">
         <h2>Viajes próximos</h2>

@@ -14,7 +14,7 @@ docker compose up --build
 - API y documentación: http://localhost:8000/docs
 - MySQL: `localhost:3306`, base `boletos`, usuario `boletos`, contraseña `boletos`
 
-La primera arrancada crea el esquema, los disparadores, el evento que expira reservas y los datos de prueba (ciudades del Ecuador, rutas, noticias, anuncios y fotos). Los horarios están en hora de Ecuador (UTC−5). Las imágenes de la galería viven en el volumen `medios`, montado en `/app/medios`, y se sirven en `/medios`.
+La primera arrancada crea el esquema, los disparadores, el evento que expira reservas y los datos de prueba (ciudades del Ecuador, rutas, noticias, anuncios y fotos). Los horarios están en hora de Ecuador (UTC−5). Al arrancar, el backend aplica `database/migracion_horarios.sql` (la misma copia vive en `backend/app/sql/`): crea la tabla `horarios` y, sin borrar viajes ni ciudades, deja dos salidas diarias en ambos sentidos entre las ciudades de la semilla para los próximos 30 días. Se puede volver a ejecutar; solo inserta lo que falta. En taquilla, **Generar salidas** hace lo mismo. Las imágenes de la galería viven en el volumen `medios`, montado en `/app/medios`, y se sirven en `/medios`.
 
 Para volver a cargar la semilla hay que borrar también los volúmenes:
 
@@ -35,7 +35,7 @@ La contraseña se guarda con bcrypt. El cliente se registra desde **Ingresar →
 
 ## Recorrido
 
-1. En el inicio, elige origen, destino y fecha. Mañana hay salidas de prueba, por ejemplo La Maná → Quevedo y La Maná → Latacunga.
+1. En el inicio, elige origen, destino y fecha. La fecha usa la hora de Ecuador (`America/Guayaquil`). Hay dos salidas al día, ida y vuelta, entre todas las ciudades de la semilla, durante los próximos 30 días. Si ese día no hay cupo, la página dice «No hay salidas para esa fecha» y propone los siguientes días y el regreso.
 2. La franja y la ventana de promoción salen de los anuncios vigentes. En taquilla cada anuncio es de texto o de imagen, con fechas y un interruptor de activo. La ventana se cierra y queda oculta en esa pestaña del navegador. En taquilla no se muestra, para no tapar los formularios.
 3. **Noticias** lista las publicaciones y abre cada nota. **Galería** muestra la unidad real, destinos y terminales; al pulsar una foto se abre el visor. **Encomiendas** muestra la cobertura (La Maná, Quevedo, Quinsaloma, Moraspungo, Latacunga, Ambato, Quito, Guayaquil, Durán y Empalme) y los teléfonos: matriz 099 412 7992, Quevedo 098 040 5468, Guayaquil 099 117 5522, Durán 099 117 2085.
 4. En el mapa, verde es libre, azul es el asiento elegido, gris es ocupado y el rayado es bloqueado. El mapa se actualiza en vivo por `/ws/viajes/{id}`.
@@ -86,7 +86,9 @@ La vista `v_disponibilidad` clasifica cada puesto del viaje en `libre`, `bloquea
 | POST | `/auth/refresh` | Rota el refresh token (hash SHA-256, revocable) |
 | POST | `/auth/logout` | Revoca el refresh token |
 | GET | `/ciudades` | Origen y destino del buscador |
-| GET | `/viajes?origen&destino&fecha` | Salidas con puestos libres |
+| GET | `/viajes?origen&destino&fecha` | Salidas que todavía no han partido |
+| GET | `/viajes/proximas?origen&destino&desde` | Próximas fechas con cupo en esa ruta |
+| POST | `/admin/horarios/generar` | Completa 30 días desde la tabla `horarios`, sin duplicar |
 | GET | `/viajes/{id}/asientos` | Mapa leído de `v_disponibilidad` |
 | POST | `/boletos/reservar` | Reserva 10 minutos |
 | POST | `/boletos/{codigo}/pagar` | `SELECT FOR UPDATE`, método de pago, referencia única, factura, QR |
