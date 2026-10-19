@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
 import { useAuth } from '../contexto/AuthContext';
@@ -20,33 +20,40 @@ export default function Admin() {
   const [pestana, setPestana] = useState('operacion');
 
   const esAdmin = usuario?.rol === 'administrador';
+  const carga = useRef(0);
+
+  function recargarCatalogo() {
+    const id = carga.current + 1;
+    carga.current = id;
+    return Promise.all([
+      solicitar('/admin/rutas', { token }),
+      solicitar('/admin/buses', { token }),
+      solicitar('/admin/viajes', { token }),
+    ]).then(([listaRutas, listaBuses, listaViajes]) => {
+      if (carga.current !== id) return;
+      setRutas(listaRutas);
+      setBuses(listaBuses);
+      setViajes(listaViajes);
+    });
+  }
 
   useEffect(() => {
     if (!esAdmin) return;
+    const id = carga.current + 1;
+    carga.current = id;
     Promise.all([
       solicitar('/admin/rutas', { token }),
       solicitar('/admin/buses', { token }),
       solicitar('/admin/viajes', { token }),
       solicitar(`/admin/ventas?fecha=${fechaBogota(0)}`, { token }),
     ]).then(([listaRutas, listaBuses, listaViajes, reporte]) => {
+      if (carga.current !== id) return;
       setRutas(listaRutas);
       setBuses(listaBuses);
       setViajes(listaViajes);
       setVentas(reporte);
     }).catch((err) => setError(err.message));
   }, [esAdmin, token]);
-
-  function recargarCatalogo() {
-    return Promise.all([
-      solicitar('/admin/rutas', { token }),
-      solicitar('/admin/buses', { token }),
-      solicitar('/admin/viajes', { token }),
-    ]).then(([listaRutas, listaBuses, listaViajes]) => {
-      setRutas(listaRutas);
-      setBuses(listaBuses);
-      setViajes(listaViajes);
-    });
-  }
 
   async function crearViaje(event) {
     event.preventDefault();
@@ -77,6 +84,7 @@ export default function Admin() {
       setError('El precio debe ser mayor que cero.');
       return;
     }
+    const formulario = event.currentTarget;
     setOcupado(true);
     try {
       const creado = await solicitar('/admin/viajes', {
@@ -90,7 +98,7 @@ export default function Admin() {
         },
       });
       setMensaje(`Viaje ${creado.id} creado. Llega ${formatearFechaHora(creado.llegada_est)} a ${formatearPesos(creado.precio)}.`);
-      event.currentTarget.reset();
+      formulario.reset();
       await recargarCatalogo();
     } catch (err) {
       setError(err.message);

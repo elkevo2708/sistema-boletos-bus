@@ -97,6 +97,7 @@ export function PanelBlog({ token }) {
       publicado: datos.get('publicado') === 'on',
       publicado_en: `${publicadoEn}:00`,
     };
+    const formulario = event.currentTarget;
     try {
       if (editando) {
         await solicitar(`/admin/blog/${editando}`, { method: 'PATCH', token, body: payload });
@@ -106,7 +107,7 @@ export function PanelBlog({ token }) {
         setAviso('Publicación creada.');
       }
       setEditando(null);
-      event.currentTarget.reset();
+      formulario.reset();
       await cargar();
     } catch (err) {
       setError(err.message);
@@ -397,10 +398,11 @@ export function PanelGaleria({ token }) {
       return;
     }
     datos.set('titulo', titulo);
+    const formulario = event.currentTarget;
     try {
       await enviarFormulario('/admin/galeria', { method: 'POST', token, datos });
       setAviso('Imagen publicada en la galería.');
-      event.currentTarget.reset();
+      formulario.reset();
       await cargar();
     } catch (err) {
       setError(err.message);

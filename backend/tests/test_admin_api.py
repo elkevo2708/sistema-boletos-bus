@@ -229,7 +229,7 @@ def test_flujos_de_alta(cliente):
     mal_ruc = cliente.put(
         "/admin/emisor",
         json={
-            "ruc": "1790012344002",
+            "ruc": "1790012345001",
             "razon_social": original["razon_social"],
             "nombre_comercial": comercial,
             "establecimiento": original["establecimiento"],

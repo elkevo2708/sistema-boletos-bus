@@ -74,6 +74,7 @@ export default function PanelFlota({ token, onCambio }) {
       setError('La ciudad y la provincia necesitan al menos 2 caracteres.');
       return;
     }
+    const formulario = event.currentTarget;
     try {
       const creada = await solicitar('/admin/ciudades', {
         method: 'POST',
@@ -81,7 +82,7 @@ export default function PanelFlota({ token, onCambio }) {
         body: { nombre, departamento },
       });
       setAviso(`Ciudad ${creada.nombre} registrada.`);
-      event.currentTarget.reset();
+      formulario.reset();
       await cargar();
       onCambio?.();
     } catch (err) {
@@ -126,6 +127,7 @@ export default function PanelFlota({ token, onCambio }) {
       setError('La tarifa base debe ser mayor que cero.');
       return;
     }
+    const formulario = event.currentTarget;
     try {
       const creada = await solicitar('/admin/rutas', {
         method: 'POST',
@@ -133,7 +135,7 @@ export default function PanelFlota({ token, onCambio }) {
         body: { origen_id: origen, destino_id: destino, duracion_min: duracion, precio_base: precio },
       });
       setAviso(`Ruta ${creada.id} creada a ${precio} USD.`);
-      event.currentTarget.reset();
+      formulario.reset();
       await cargar();
       onCambio?.();
     } catch (err) {
@@ -178,6 +180,7 @@ export default function PanelFlota({ token, onCambio }) {
       setError('El bus no puede tener más de 100 asientos.');
       return;
     }
+    const formulario = event.currentTarget;
     try {
       const creado = await solicitar('/admin/buses', {
         method: 'POST',
@@ -191,7 +194,7 @@ export default function PanelFlota({ token, onCambio }) {
         },
       });
       setAviso(`Bus disco ${creado.numero_disco} creado con ${creado.asientos} asientos.`);
-      event.currentTarget.reset();
+      formulario.reset();
       setPisos(1);
       setFilas(10);
       await cargar();
