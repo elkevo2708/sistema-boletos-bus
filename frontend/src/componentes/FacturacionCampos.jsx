@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
-import { solicitar } from '../api';
-import { CONSUMIDOR_FINAL, identificacionValida, validarIdentificacion } from '../identificacion';
+import { CONSUMIDOR_FINAL, validarIdentificacion } from '../identificacion';
+import { useConsultaIdentificacion } from '../consultaIdentificacion';
 
 const TIPOS = [
   ['cedula', 'Cédula'],
@@ -10,57 +9,28 @@ const TIPOS = [
 ];
 
 export default function FacturacionCampos({ valor, onChange, token }) {
-  const [aviso, setAviso] = useState('');
   const error = valor.identificacion
     ? validarIdentificacion(valor.tipo, valor.identificacion)
     : '';
-
-  useEffect(() => {
-    if (!token || (valor.tipo !== 'cedula' && valor.tipo !== 'ruc')) {
-      return undefined;
-    }
-    if (!identificacionValida(valor.tipo, valor.identificacion)) {
-      setAviso('');
-      return undefined;
-    }
-    const buscada = valor.identificacion.trim();
-    let vivo = true;
-    const reloj = setTimeout(async () => {
-      try {
-        const data = await solicitar(
-          `/facturacion/consulta?tipo=${encodeURIComponent(valor.tipo)}&identificacion=${encodeURIComponent(buscada)}`,
-          { token },
-        );
-        if (!vivo) return;
-        if (data.encontrado) {
-          onChange((actual) => {
-            if (actual.identificacion.trim() !== buscada) return actual;
-            return {
-              ...actual,
-              razon_social: data.razon_social || actual.razon_social,
-              direccion: data.direccion || actual.direccion,
-              email: data.email || actual.email,
-              telefono: data.telefono || actual.telefono,
-            };
-          });
-          setAviso(data.origen === 'externo'
-            ? 'Razón social consultada en el servicio contratado.'
-            : 'Razón social tomada de una compra anterior.');
-        } else {
-          setAviso('No hay datos para esta identificación. Escríbalos a mano.');
-        }
-      } catch {
-        if (vivo) setAviso('No se pudo consultar. Puede escribir los datos a mano.');
-      }
-    }, 350);
-    return () => {
-      vivo = false;
-      clearTimeout(reloj);
-    };
-  }, [token, valor.tipo, valor.identificacion, onChange]);
+  const consulta = useConsultaIdentificacion({
+    token,
+    tipo: valor.tipo,
+    identificacion: valor.identificacion,
+    onEncontrado: (data) => {
+      onChange((actual) => {
+        if (actual.identificacion.trim() !== data.identificacion) return actual;
+        return {
+          ...actual,
+          razon_social: data.razon_social || actual.razon_social,
+          direccion: data.direccion || actual.direccion,
+          email: data.email || actual.email,
+          telefono: data.telefono || actual.telefono,
+        };
+      });
+    },
+  });
 
   function cambiarTipo(tipo) {
-    setAviso('');
     if (tipo === 'consumidor_final') {
       onChange({
         ...valor,
@@ -110,11 +80,23 @@ export default function FacturacionCampos({ valor, onChange, token }) {
         />
       </label>
       {error && <p className="aviso" role="alert">{error}</p>}
-      {aviso && !error && <p className="aviso-ok" role="status">{aviso}</p>}
+      {!error && consulta.estado === 'consultando' && (
+        <p className="consultando" role="status">{consulta.aviso}</p>
+      )}
+      {!error && consulta.estado === 'vacio' && (
+        <p className="aviso" role="status">No encontrado, ingréselo manualmente.</p>
+      )}
+      {!error && consulta.estado === 'encontrado' && (
+        <p className="aviso-ok" role="status">{consulta.aviso}</p>
+      )}
+      {!error && consulta.estado === 'error' && (
+        <p className="aviso" role="status">{consulta.aviso}</p>
+      )}
       <label>
         Nombres o razón social
         <input
           value={valor.razon_social}
+          aria-busy={consulta.estado === 'consultando'}
           onChange={(e) => onChange({ ...valor, razon_social: e.target.value })}
           required
           minLength={3}

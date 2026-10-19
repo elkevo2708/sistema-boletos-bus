@@ -16,9 +16,8 @@ TIPOS_COMPRADOR = {
 }
 FORMAS_PAGO = {
     "tarjeta": "19",
-    "transferencia": "20",
     "payphone": "20",
-    "efectivo": "01",
+    "deuna": "17",
 }
 
 

@@ -5,7 +5,7 @@ import { formatearFechaHora, formatearPesos } from '../formato';
 const ESTADOS = ['', 'generada', 'firmada', 'autorizada', 'rechazada'];
 
 export function PanelFacturas({ token }) {
-  const [filtro, setFiltro] = useState({ estado: '', identificacion: '', desde: '', hasta: '' });
+  const [filtro, setFiltro] = useState({ estado: '', identificacion: '', desde: '', hasta: '', metodo: '' });
   const [facturas, setFacturas] = useState([]);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
@@ -81,6 +81,12 @@ export function PanelFacturas({ token }) {
         <label>
           Hasta
           <input type="date" value={filtro.hasta} onChange={(e) => setFiltro({ ...filtro, hasta: e.target.value })} aria-label="Fecha hasta" />
+          <select value={filtro.metodo} onChange={(e) => setFiltro({ ...filtro, metodo: e.target.value })} aria-label="Filtrar por método de pago">
+            <option value="">Todos los pagos</option>
+            <option value="deuna">DeUna!</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="payphone">PayPhone</option>
+          </select>
         </label>
         <button type="submit" className="btn btn-pino" aria-label="Filtrar facturas">Filtrar</button>
       </form>

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { solicitar, traerArchivo, urlSocket } from '../api';
 import FacturacionCampos from '../componentes/FacturacionCampos';
 import { useAuth } from '../contexto/AuthContext';
+import { useConsultaIdentificacion } from '../consultaIdentificacion';
 import { cuentaRegresiva, formatearFechaHora, formatearPesos, instanteColombia } from '../formato';
-import { identificacionValida } from '../identificacion';
+import { cedulaValida, identificacionValida, rucValido } from '../identificacion';
 
 const ETIQUETA = {
   libre: 'libre',
@@ -30,9 +31,14 @@ export default function Asientos() {
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [ocupado, setOcupado] = useState(false);
-  const [metodo, setMetodo] = useState('tarjeta');
+  const [metodo, setMetodo] = useState('deuna');
+  const [opcionesPago, setOpcionesPago] = useState([
+    { codigo: 'deuna', nombre: 'DeUna!', detalle: 'Billetera Banco Pichincha' },
+    { codigo: 'tarjeta', nombre: 'Tarjeta de crédito o débito', detalle: 'Visa y Mastercard' },
+    { codigo: 'payphone', nombre: 'PayPhone', detalle: 'Cajita de pagos' },
+  ]);
   const [tarjeta, setTarjeta] = useState({ numero: '', vence: '', cvv: '', nombre: '' });
-  const [celular, setCelular] = useState('');
+  const porAsiento = useRef({});
   const [facturaDatos, setFacturaDatos] = useState({
     tipo: 'cedula',
     identificacion: '',
@@ -134,8 +140,44 @@ export default function Asientos() {
     if (reserva || qr) return;
     if (asiento.estado !== 'libre' && asiento.id !== seleccionado) return;
     setAviso('');
-    setSeleccionado((actual) => (actual === asiento.id ? null : asiento.id));
+    if (seleccionado) porAsiento.current[seleccionado] = pasajero;
+    if (seleccionado === asiento.id) {
+      setSeleccionado(null);
+      return;
+    }
+    setPasajero(porAsiento.current[asiento.id] || { nombre: '', documento: '' });
+    setSeleccionado(asiento.id);
   }
+
+  const tipoPasajero = cedulaValida(pasajero.documento.trim())
+    ? 'cedula'
+    : (rucValido(pasajero.documento.trim()) ? 'ruc' : '');
+  const consultaPasajero = useConsultaIdentificacion({
+    token,
+    tipo: tipoPasajero,
+    identificacion: pasajero.documento,
+    onEncontrado: (data) => {
+      setPasajero((actual) => (
+        actual.documento.trim() === data.identificacion
+          ? { ...actual, nombre: data.razon_social }
+          : actual
+      ));
+    },
+  });
+
+  useEffect(() => {
+    if (seleccionado) porAsiento.current[seleccionado] = pasajero;
+  }, [pasajero, seleccionado]);
+
+  useEffect(() => {
+    solicitar('/pagos/metodos')
+      .then((lista) => {
+        if (!Array.isArray(lista) || !lista.length) return;
+        setOpcionesPago(lista);
+        setMetodo((actual) => (lista.some((item) => item.codigo === actual) ? actual : lista[0].codigo));
+      })
+      .catch(() => {});
+  }, []);
 
   async function reservar(event) {
     event.preventDefault();
@@ -174,13 +216,13 @@ export default function Asientos() {
   }
 
   function referenciaDePago() {
+    const cola = referencia.slice(-8);
     if (metodo === 'tarjeta') {
       const ultimos = tarjeta.numero.replace(/\D/g, '').slice(-4);
-      return `TARJ-${ultimos}-${referencia.slice(-6)}`;
+      return `TARJ-${ultimos}-${cola}`;
     }
-    if (metodo === 'payphone') return `PAY-${celular.replace(/\D/g, '').slice(-6)}-${referencia.slice(-4)}`;
-    if (metodo === 'efectivo') return `VENT-${referencia.slice(-8)}`;
-    return referencia;
+    if (metodo === 'deuna') return `DUNA-${cola}`;
+    return `PAY-${cola}`;
   }
 
   function facturacionLista() {
@@ -198,8 +240,6 @@ export default function Asientos() {
       const numero = tarjeta.numero.replace(/\D/g, '');
       return numero.length >= 15 && tarjeta.vence.length >= 4 && tarjeta.cvv.length >= 3 && tarjeta.nombre.trim().length > 2;
     }
-    if (metodo === 'payphone') return celular.replace(/\D/g, '').length >= 10;
-    if (metodo === 'transferencia') return referencia.trim().length >= 4;
     return true;
   }
 
@@ -215,6 +255,7 @@ export default function Asientos() {
         body: {
           referencia_ext: referenciaDePago(),
           metodo,
+          ultimos4: metodo === 'tarjeta' ? tarjeta.numero.replace(/\D/g, '').slice(-4) : null,
           facturacion: {
             tipo: facturaDatos.tipo,
             identificacion: facturaDatos.identificacion.trim(),
@@ -225,6 +266,11 @@ export default function Asientos() {
           },
         },
       });
+      if (data.estado === 'pendiente') {
+        setAviso(data.mensaje || 'El pago quedó pendiente de confirmación.');
+        if (data.redireccion) window.open(data.redireccion, '_blank', 'noopener');
+        return;
+      }
       setPago(data);
       setQr(data.qr_png_base64);
       if (data.factura?.id) {
@@ -387,6 +433,15 @@ export default function Asientos() {
                   aria-label="Documento del pasajero"
                 />
               </label>
+              {consultaPasajero.estado === 'consultando' && (
+                <p className="consultando" role="status">{consultaPasajero.aviso}</p>
+              )}
+              {consultaPasajero.estado === 'vacio' && (
+                <p className="aviso" role="status">No encontrado, ingréselo manualmente.</p>
+              )}
+              {consultaPasajero.estado === 'encontrado' && (
+                <p className="aviso-ok" role="status">{consultaPasajero.aviso} Quedó en el asiento {asientoActivo?.numero}.</p>
+              )}
               {reserva && (
                 <>
                   <p className="reloj" aria-live="polite">
@@ -396,23 +451,34 @@ export default function Asientos() {
                   </p>
                   <fieldset className="metodos">
                     <legend>Método de pago</legend>
-                    {METODOS.map((opcion) => (
-                      <label key={opcion.id} className={metodo === opcion.id ? 'metodo activo' : 'metodo'}>
-                        <input
-                          type="radio"
-                          name="metodo"
-                          value={opcion.id}
-                          checked={metodo === opcion.id}
-                          onChange={() => setMetodo(opcion.id)}
-                        />
-                        <MetodoIcono id={opcion.id} />
-                        <span>
-                          <strong>{opcion.titulo}</strong>
+                    <div className="marcas-pago" role="radiogroup" aria-label="Método de pago">
+                      {opcionesPago.map((opcion) => (
+                        <button
+                          key={opcion.codigo}
+                          type="button"
+                          role="radio"
+                          aria-checked={metodo === opcion.codigo}
+                          className={`marca-pago marca-${opcion.codigo}${metodo === opcion.codigo ? ' activo' : ''}`}
+                          onClick={() => setMetodo(opcion.codigo)}
+                        >
+                          <MarcaPago codigo={opcion.codigo} />
+                          <span>{opcion.nombre}</span>
                           <small>{opcion.detalle}</small>
-                        </span>
-                      </label>
-                    ))}
+                        </button>
+                      ))}
+                    </div>
                   </fieldset>
+                  {metodo === 'deuna' && reserva && (
+                    <div className="datos-pago deuna-qr">
+                      <img
+                        src={`/api/pagos/qr?texto=${encodeURIComponent(`deuna://sandbox/${reserva.codigo}`)}`}
+                        alt="Código QR para pagar con DeUna"
+                        width="168"
+                        height="168"
+                      />
+                      <p>Abra DeUna! y escanee el QR. En modo de prueba el cobro se aprueba al pulsar Pagar.</p>
+                    </div>
+                  )}
                   {metodo === 'tarjeta' && (
                     <div className="datos-pago">
                       <label>
@@ -433,29 +499,13 @@ export default function Asientos() {
                         Nombre en la tarjeta
                         <input autoComplete="off" aria-label="Nombre en la tarjeta" value={tarjeta.nombre} onChange={(e) => setTarjeta({ ...tarjeta, nombre: e.target.value })} />
                       </label>
-                      <p className="meta">El número no sale de este navegador. El cargo es simulado.</p>
-                    </div>
-                  )}
-                  {metodo === 'transferencia' && (
-                    <div className="datos-pago">
-                      <p>Banco del Pacífico · Cooperativa La Maná · cuenta corriente 2100456789. Use esta referencia al transferir.</p>
-                      <label>
-                        Referencia de la transferencia
-                        <input value={referencia} onChange={(e) => setReferencia(e.target.value)} required minLength={4} maxLength={64} aria-label="Referencia de la transferencia" />
-                      </label>
+                      <p className="meta">El número no sale de este navegador. Solo se envían los últimos 4 dígitos.</p>
                     </div>
                   )}
                   {metodo === 'payphone' && (
                     <div className="datos-pago">
-                      <label>
-                        Celular de la billetera
-                        <input inputMode="tel" aria-label="Celular PayPhone" value={celular} onChange={(e) => setCelular(e.target.value)} placeholder="0991234567" />
-                      </label>
-                      <p className="meta">En producción aquí se abriría PayPhone. Esta pasarela está simulada.</p>
+                      <p className="marca-payphone-nota">PayPhone abre su Cajita de pagos para saldo o tarjeta. En modo de prueba el cobro se aprueba aquí.</p>
                     </div>
-                  )}
-                  {metodo === 'efectivo' && (
-                    <p className="aviso-ok">Pague en la ventanilla del terminal de La Maná antes de la salida. El QR es su orden de pago.</p>
                   )}
                   <FacturacionCampos valor={facturaDatos} onChange={setFacturaDatos} token={token} />
                 </>
@@ -502,23 +552,8 @@ function nuevaReferencia() {
   return `SIM-${aleatorio}`;
 }
 
-const METODOS = [
-  { id: 'tarjeta', titulo: 'Tarjeta de crédito o débito', detalle: 'Cargo simulado, listo para una pasarela real' },
-  { id: 'transferencia', titulo: 'Transferencia bancaria', detalle: 'Banco del Pacífico' },
-  { id: 'payphone', titulo: 'PayPhone / billeteras', detalle: 'Confirme el cobro en el celular' },
-  { id: 'efectivo', titulo: 'Efectivo en ventanilla', detalle: 'Terminal de La Maná' },
-];
-
-function MetodoIcono({ id }) {
-  const comun = { width: 36, height: 24, viewBox: '0 0 36 24', 'aria-hidden': true };
-  if (id === 'tarjeta') {
-    return <svg {...comun}><rect width="36" height="24" rx="4" fill="#163e75" /><rect y="6" width="36" height="5" fill="#e4c98a" /></svg>;
-  }
-  if (id === 'transferencia') {
-    return <svg {...comun}><rect width="36" height="24" rx="4" fill="#0f3d32" /><path d="M8 16h20M12 8h12" stroke="#fff" strokeWidth="2" /></svg>;
-  }
-  if (id === 'payphone') {
-    return <svg {...comun}><rect x="10" y="1" width="16" height="22" rx="3" fill="#1f6f78" /><rect x="13" y="4" width="10" height="12" rx="1" fill="#f6f1e7" /></svg>;
-  }
-  return <svg {...comun}><rect width="36" height="24" rx="4" fill="#b5522a" /><circle cx="18" cy="12" r="5" fill="#f6f1e7" /></svg>;
+function MarcaPago({ codigo }) {
+  if (codigo === 'deuna') return <strong className="wordmark wordmark-deuna">DeUna!</strong>;
+  if (codigo === 'payphone') return <strong className="wordmark wordmark-payphone">PayPhone</strong>;
+  return <strong className="wordmark wordmark-tarjeta">Visa · Mastercard</strong>;
 }

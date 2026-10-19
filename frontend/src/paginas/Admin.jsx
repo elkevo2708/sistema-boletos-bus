@@ -6,6 +6,8 @@ import { ahoraBogotaInput, fechaBogota, formatearFechaHora, formatearPesos } fro
 import { PanelAnuncios, PanelBlog, PanelGaleria } from './AdminContenido';
 import { PanelEmisor, PanelFacturas } from './AdminFacturas';
 import PanelFlota from './AdminFlota';
+import AdminPagos from './AdminPagos';
+import AdminPortada from './AdminPortada';
 
 export default function Admin() {
   const { usuario, token } = useAuth();
@@ -212,6 +214,8 @@ export default function Admin() {
       <div className="filtros" role="tablist" aria-label="Secciones de taquilla">
         {[
           ['operacion', 'Operación'],
+          ['portada', 'Portada'],
+          ['pagos', 'Pagos'],
           ['flota', 'Flota'],
           ['facturas', 'Facturas'],
           ['emisor', 'Emisor'],
@@ -227,6 +231,8 @@ export default function Admin() {
       {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
       {error && <p className="aviso" role="alert">{error}</p>}
 
+      {pestana === 'portada' && <AdminPortada token={token} />}
+      {pestana === 'pagos' && <AdminPagos token={token} />}
       {pestana === 'flota' && <PanelFlota token={token} onCambio={recargarCatalogo} />}
       {pestana === 'facturas' && <PanelFacturas token={token} />}
       {pestana === 'emisor' && <PanelEmisor token={token} />}

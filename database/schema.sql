@@ -152,8 +152,8 @@ CREATE TABLE pagos (
   boleto_id BIGINT UNSIGNED NOT NULL,
   referencia_ext VARCHAR(64) NOT NULL,
   monto DECIMAL(10, 2) NOT NULL,
-  metodo ENUM('tarjeta', 'transferencia', 'payphone', 'efectivo') NOT NULL DEFAULT 'efectivo',
-  proveedor VARCHAR(40) NOT NULL DEFAULT 'simulado:efectivo',
+  metodo ENUM('deuna', 'tarjeta', 'payphone') NOT NULL DEFAULT 'payphone',
+  proveedor VARCHAR(80) NOT NULL DEFAULT 'sandbox:payphone',
   estado ENUM('pendiente', 'aprobado', 'rechazado') NOT NULL DEFAULT 'aprobado',
   pagado_en DATETIME NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -162,6 +162,45 @@ CREATE TABLE pagos (
   KEY idx_pagos_estado_fecha (estado, pagado_en),
   CONSTRAINT fk_pagos_boleto FOREIGN KEY (boleto_id) REFERENCES boletos (id),
   CONSTRAINT chk_pagos_monto CHECK (monto > 0)
+) ENGINE=InnoDB;
+
+CREATE TABLE metodos_pago (
+  codigo VARCHAR(20) PRIMARY KEY,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE intenciones_pago (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  boleto_id BIGINT UNSIGNED NOT NULL,
+  usuario_id INT UNSIGNED NOT NULL,
+  metodo ENUM('deuna', 'tarjeta', 'payphone') NOT NULL,
+  client_tx_id VARCHAR(64) NOT NULL,
+  id_externo VARCHAR(80) NULL,
+  monto DECIMAL(10, 2) NOT NULL,
+  estado ENUM('pendiente', 'aprobado', 'rechazado') NOT NULL DEFAULT 'pendiente',
+  proveedor VARCHAR(80) NOT NULL,
+  facturacion JSON NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_intencion_tx (client_tx_id),
+  KEY idx_intencion_boleto (boleto_id),
+  CONSTRAINT fk_intencion_boleto FOREIGN KEY (boleto_id) REFERENCES boletos (id)
+) ENGINE=InnoDB;
+
+CREATE TABLE portada (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tipo ENUM('imagen', 'video') NOT NULL DEFAULT 'imagen',
+  origen ENUM('archivo', 'enlace') NOT NULL DEFAULT 'enlace',
+  archivo VARCHAR(255) NULL,
+  enlace VARCHAR(500) NULL,
+  poster VARCHAR(255) NULL,
+  titulo VARCHAR(160) NOT NULL,
+  subtitulo VARCHAR(300) NULL,
+  texto_boton VARCHAR(80) NULL,
+  enlace_boton VARCHAR(300) NULL,
+  orden INT NOT NULL DEFAULT 0,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE auditoria (
@@ -562,7 +601,7 @@ INSERT INTO blog_posts (slug, titulo, resumen, cuerpo, categoria, imagen, public
   'martes-2x1-quevedo',
   'Martes 2x1 en la ruta a Quevedo',
   'El segundo pasaje de la misma compra, en las salidas de la mañana hacia Quevedo, sale a mitad de precio.',
-  'De martes a martes, la ruta corta entre La Maná y Quevedo tiene una promoción sencilla: en una misma compra, el segundo boleto de las salidas de la mañana paga la mitad.\n\nAplica para los turnos de las 06:30 y las 09:00, mientras haya asientos libres. No se acumula con el descuento de estudiantes y el segundo pasajero debe viajar en el mismo bus.\n\nPuede pagarlo con tarjeta, transferencia, PayPhone o en efectivo en ventanilla. La reserva en línea sigue durando diez minutos.',
+  'De martes a martes, la ruta corta entre La Maná y Quevedo tiene una promoción sencilla: en una misma compra, el segundo boleto de las salidas de la mañana paga la mitad.\n\nAplica para los turnos de las 06:30 y las 09:00, mientras haya asientos libres. No se acumula con el descuento de estudiantes y el segundo pasajero debe viajar en el mismo bus.\n\nPuede pagarlo con DeUna!, tarjeta o PayPhone. La reserva en línea sigue durando diez minutos.',
   'noticia',
   'bus-costa.jpg',
   1,
@@ -637,6 +676,21 @@ INSERT INTO emisor (
   'pruebas',
   0,
   0.00
+);
+
+INSERT INTO metodos_pago (codigo, activo) VALUES
+  ('deuna', 1),
+  ('tarjeta', 1),
+  ('payphone', 1);
+
+INSERT INTO portada (tipo, origen, enlace, titulo, subtitulo, orden, activo) VALUES (
+  'imagen',
+  'enlace',
+  '/bus-lamana.jpg',
+  'Viaja desde La Maná con el asiento ya elegido.',
+  'Salidas a Quevedo, Latacunga, Quito, Ambato y Guayaquil. Reserva en línea y aborda con tu código QR.',
+  0,
+  1
 );
 
 INSERT INTO clientes_facturacion (identificacion, tipo, razon_social, direccion, email, telefono)

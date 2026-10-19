@@ -104,14 +104,33 @@ h3 { font-size: 1.15rem; }
 .franja-clara { background: var(--papel); }
 
 .hero {
+  position: relative;
   min-height: 620px;
   display: flex; flex-direction: column; justify-content: flex-end;
   padding: 5.5rem 5vw 2rem;
   color: #fff;
-  background:
-    linear-gradient(100deg, rgba(6, 40, 12, 0.72) 0%, rgba(6, 40, 12, 0.28) 46%, rgba(6, 30, 8, 0.18) 100%),
-    url('/bus-lamana.jpg') center 42% / cover no-repeat;
+  overflow: hidden;
+  background: #06280c;
 }
+.hero-medio, .hero-medio img, .hero-medio video, .hero-medio iframe {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; border: 0; pointer-events: none;
+}
+.hero-velo {
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(100deg, rgba(6, 40, 12, 0.78) 0%, rgba(6, 40, 12, 0.38) 48%, rgba(6, 30, 8, 0.22) 100%);
+}
+.hero-contenido { position: relative; z-index: 2; }
+.hero-cta { margin-bottom: 1rem; }
+.hero-controles { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.8rem; }
+.hero-controles button {
+  min-height: 36px; min-width: 36px; border-radius: 999px; border: 0;
+  background: rgba(255,255,255,0.88); color: #06280c; font-weight: 700; cursor: pointer;
+}
+.hero-controles .punto { width: 12px; min-width: 12px; height: 12px; padding: 0; background: rgba(255,255,255,0.45); }
+.hero-controles .punto.activo { background: #fff; }
+.hero-previa { min-height: 280px; padding: 1.2rem; border-radius: 8px; margin-bottom: 1rem; }
+.hero-previa h3 { margin: 0 0 0.4rem; color: #fff; }
 .hero .lead { color: rgba(255, 255, 255, 0.9); }
 .hero .sobrelinea { color: var(--oro-claro); }
 .hero-texto { width: min(760px, 100%); margin-bottom: 1.3rem; }
@@ -366,6 +385,34 @@ tfoot th { font-size: 1.15rem; }
 .metodo input { width: 1.05rem; min-height: 0; accent-color: var(--verde); }
 .metodo small { display: block; color: #5e584f; font-weight: 400; }
 .metodo.activo { border-color: var(--verde); box-shadow: inset 0 0 0 1px var(--verde); background: #f3faf3; }
+.marcas-pago { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.55rem; }
+.marca-pago {
+  display: grid; gap: 0.2rem; justify-items: start; text-align: left;
+  border: 1px solid var(--linea); border-radius: 8px; padding: 0.75rem 0.7rem;
+  background: #fff; cursor: pointer; min-height: 92px;
+}
+.marca-pago small { color: #5e584f; font-weight: 500; }
+.marca-pago.activo { border-color: var(--verde); box-shadow: inset 0 0 0 1px var(--verde); }
+.wordmark { font-size: 1.05rem; letter-spacing: -0.03em; }
+.wordmark-deuna { color: #4b1d8f; }
+.wordmark-payphone { color: #e4572e; }
+.wordmark-tarjeta { color: #1a1f71; font-size: 0.82rem; letter-spacing: 0; }
+.marca-deuna.activo { background: #f6f1ff; }
+.marca-payphone.activo { background: #fff4ef; }
+.marca-tarjeta.activo { background: #f3f6ff; }
+.deuna-qr { justify-items: start; }
+.deuna-qr img { background: #fff; border-radius: 8px; padding: 0.4rem; border: 1px solid var(--linea); }
+.consultando { margin: 0; color: #0a7a32; font-weight: 700; }
+.consultando::before {
+  content: ''; display: inline-block; width: 0.8rem; height: 0.8rem; margin-right: 0.4rem;
+  border: 2px solid #cdebd0; border-top-color: #0a7a32; border-radius: 50%;
+  animation: girar 0.7s linear infinite; vertical-align: -0.1rem;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+.lista-pagos { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.lista-pagos li { display: flex; justify-content: space-between; gap: 1rem; align-items: center; border: 1px solid var(--linea); border-radius: 8px; padding: 0.8rem; }
+.check { display: flex; align-items: center; gap: 0.5rem; text-transform: none; letter-spacing: 0; }
+.check input { width: auto; min-height: 0; }
 .datos-pago { display: grid; gap: 0.7rem; }
 .facturacion { border: 1px solid var(--linea); border-radius: 6px; padding: 0.8rem; display: grid; gap: 0.7rem; }
 .facturacion legend { font-weight: 700; padding: 0 0.3rem; }
@@ -456,10 +503,12 @@ tfoot th { font-size: 1.15rem; }
 
 @media (max-width: 720px) {
   .panel-busqueda .btn-buscar { width: 100%; }
+  .marcas-pago { grid-template-columns: 1fr; }
+  .lista-pagos li { flex-direction: column; align-items: stretch; }
   .panel-busqueda, .tiquete, .asientos-layout, .rejilla-admin, .empresa,
   .rejilla-destinos, .atajos-ruta, .pasos ol, .rejilla-flota, .cifras,
   .rejilla-servicios, .rejilla-promos, .rejilla-oficinas, .pie, .dos { grid-template-columns: 1fr; }
-  .hero { min-height: 0; padding-top: 3rem; }
+  .hero { min-height: 640px; padding-top: 4.5rem; }
   .tiquete-lado { border-left: 0; border-top: 1px dashed #d8cec2; }
   .cabecera-viaje, .ventas-cabeza, .acciones, .fila-fecha, .barra-util { flex-direction: column; align-items: stretch; }
   .rejilla { grid-template-columns: 42px 42px 16px 42px 42px; }

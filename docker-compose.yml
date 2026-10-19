@@ -43,6 +43,20 @@ services:
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173
       IDENTIFICACION_LOOKUP_URL: ""
       IDENTIFICACION_LOOKUP_API_KEY: ""
+      IDENTIFICACION_LOOKUP_HEADER: Authorization
+      IDENTIFICACION_LOOKUP_SCHEME: Bearer
+      IDENTIFICACION_LOOKUP_METODO: GET
+      IDENTIFICACION_LOOKUP_CAMPO_NOMBRE: nombres,apellidos
+      PAGOS_MODO: sandbox
+      PAGOS_WEBHOOK_SECRETO: ""
+      PUBLIC_BASE_URL: http://localhost:8080
+      PAYPHONE_TOKEN: ""
+      PAYPHONE_STORE_ID: ""
+      DEUNA_API_KEY: ""
+      DEUNA_API_SECRET: ""
+      TARJETA_PROVEEDOR: payphone
+      TARJETA_API_URL: ""
+      TARJETA_API_KEY: ""
       FIRMA_P12_RUTA: ""
       FIRMA_P12_CLAVE: ""
       SRI_MODO: offline

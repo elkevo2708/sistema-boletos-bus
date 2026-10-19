@@ -127,9 +127,13 @@ async def listar_facturas(
     identificacion: str | None = None,
     desde: str | None = None,
     hasta: str | None = None,
+    metodo: str | None = None,
     _: dict = Depends(exigir_admin),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
+    metodo_limpio = (metodo or "").strip() or None
+    if metodo_limpio and metodo_limpio not in ("deuna", "tarjeta", "payphone"):
+        raise HTTPException(status_code=422, detail="El filtro de pago solo admite DeUna, tarjeta o PayPhone")
     filas = (
         await sesion.execute(
             text(
@@ -137,13 +141,15 @@ async def listar_facturas(
                 SELECT f.id, f.numero, f.clave_acceso, f.fecha_emision, f.estado, f.total, f.iva,
                        f.identificacion_comprador, f.razon_social_comprador, f.email_comprador,
                        f.ambiente, f.mensaje_sri, f.firma_omitida,
-                       d.ruta, d.salida, d.asiento, d.pasajero
+                       d.ruta, d.salida, d.asiento, d.pasajero, p.metodo
                   FROM facturas f
                   JOIN factura_detalles d ON d.factura_id = f.id
+                  LEFT JOIN pagos p ON p.boleto_id = f.boleto_id
                  WHERE (:estado IS NULL OR f.estado = :estado)
                    AND (:identificacion IS NULL OR f.identificacion_comprador = :identificacion)
                    AND (:desde IS NULL OR DATE(f.fecha_emision) >= :desde)
                    AND (:hasta IS NULL OR DATE(f.fecha_emision) <= :hasta)
+                   AND (:metodo IS NULL OR p.metodo = :metodo)
                  ORDER BY f.id DESC
                  LIMIT 200
                 """
@@ -153,6 +159,7 @@ async def listar_facturas(
                 "identificacion": (identificacion or "").strip() or None,
                 "desde": (desde or "").strip() or None,
                 "hasta": (hasta or "").strip() or None,
+                "metodo": metodo_limpio,
             },
         )
     ).mappings().all()

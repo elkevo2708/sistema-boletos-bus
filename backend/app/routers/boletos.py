@@ -6,8 +6,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cobro import guardar_intencion, metodo_habilitado, registrar_cobro
 from app.dependencias import obtener_sesion, usuario_actual
-from app.emision import _leer, completar_emision, registrar_factura, resumen
+from app.emision import _leer, completar_emision, resumen
 from app.errores import CodigoDuplicado, traducir_error_mysql
 from app.esquemas import PagarIn, ReservarIn
 from app.pagos import SolicitudPago, obtener_proveedor
@@ -143,45 +144,56 @@ async def pagar(
         if bloqueado["vencida"]:
             raise HTTPException(status_code=409, detail="La reserva expiró")
 
+        if not await metodo_habilitado(sesion, datos.metodo):
+            raise HTTPException(status_code=422, detail="Ese método de pago está desactivado")
         proveedor = obtener_proveedor(datos.metodo)
         if proveedor is None:
             raise HTTPException(status_code=422, detail="Método de pago no disponible")
-        cobro = proveedor.cobrar(
-            SolicitudPago(
-                boleto_codigo=codigo,
-                monto=bloqueado["precio"],
-                referencia_ext=datos.referencia_ext,
-                metodo=datos.metodo,
+        try:
+            cobro = await proveedor.iniciar(
+                SolicitudPago(
+                    boleto_codigo=codigo,
+                    monto=bloqueado["precio"],
+                    referencia_ext=datos.referencia_ext,
+                    metodo=datos.metodo,
+                    ultimos4=(datos.ultimos4 or "").strip(),
+                )
             )
-        )
+        except RuntimeError as exc:
+            raise HTTPException(status_code=502, detail="La pasarela no pudo abrir el cobro") from exc
+        if cobro.pendiente:
+            await guardar_intencion(
+                sesion,
+                boleto_id=int(bloqueado["id"]),
+                usuario_id=int(usuario["id"]),
+                metodo=datos.metodo,
+                client_tx_id=datos.referencia_ext,
+                id_externo=cobro.id_externo,
+                monto=bloqueado["precio"],
+                proveedor=cobro.proveedor,
+                facturacion=datos.facturacion,
+            )
+            await sesion.commit()
+            return {
+                "estado": "pendiente",
+                "codigo": codigo,
+                "redireccion": cobro.redireccion,
+                "qr_texto": cobro.qr_texto,
+                "id_externo": cobro.id_externo,
+                "mensaje": cobro.mensaje,
+            }
         if not cobro.aprobado:
             raise HTTPException(status_code=402, detail=cobro.mensaje)
 
-        await sesion.execute(
-            text(
-                """
-                INSERT INTO pagos (boleto_id, referencia_ext, monto, metodo, proveedor, estado, pagado_en)
-                VALUES (:boleto_id, :referencia, :monto, :metodo, :proveedor, 'aprobado', NOW())
-                """
-            ),
-            {
-                "boleto_id": bloqueado["id"],
-                "referencia": cobro.referencia,
-                "monto": bloqueado["precio"],
-                "metodo": datos.metodo,
-                "proveedor": cobro.proveedor,
-            },
-        )
-        await sesion.execute(
-            text("UPDATE boletos SET estado = 'pagado' WHERE id = :id"),
-            {"id": bloqueado["id"]},
-        )
-        factura_id = await registrar_factura(
+        factura_id = await registrar_cobro(
             sesion,
-            boleto_id=int(bloqueado["id"]),
+            codigo=codigo,
             usuario_id=int(usuario["id"]),
-            comprador=datos.facturacion,
+            es_admin=usuario["rol"] == "administrador",
             metodo=datos.metodo,
+            referencia=cobro.referencia,
+            proveedor=cobro.proveedor,
+            facturacion=datos.facturacion,
         )
         await sesion.commit()
     except HTTPException:
@@ -264,6 +276,79 @@ async def pagar(
         },
         "qr_png_base64": qr,
         "factura": factura,
+    }
+
+
+@router.post("/{codigo}/preparar")
+async def preparar(
+    codigo: str,
+    datos: PagarIn,
+    usuario: dict = Depends(usuario_actual),
+    sesion: AsyncSession = Depends(obtener_sesion),
+):
+    """Abre un cobro pendiente. Lo cierra el webhook firmado, no esta llamada."""
+    codigo = codigo.strip().upper()
+    try:
+        bloqueado = (
+            await sesion.execute(
+                text(
+                    """
+                    SELECT id, estado, usuario_id, precio, (reservado_hasta < NOW()) AS vencida
+                      FROM boletos WHERE codigo = :codigo FOR UPDATE
+                    """
+                ),
+                {"codigo": codigo},
+            )
+        ).mappings().first()
+        if bloqueado is None:
+            raise HTTPException(status_code=404, detail="Boleto no encontrado")
+        if bloqueado["usuario_id"] != usuario["id"] and usuario["rol"] != "administrador":
+            raise HTTPException(status_code=403, detail="No puede pagar este boleto")
+        if bloqueado["estado"] != "reservado" or bloqueado["vencida"]:
+            raise HTTPException(status_code=409, detail="La reserva no está vigente")
+        if not await metodo_habilitado(sesion, datos.metodo):
+            raise HTTPException(status_code=422, detail="Ese método de pago está desactivado")
+        proveedor = obtener_proveedor(datos.metodo)
+        if proveedor is None:
+            raise HTTPException(status_code=422, detail="Método de pago no disponible")
+        try:
+            cobro = await proveedor.iniciar(
+                SolicitudPago(
+                    boleto_codigo=codigo,
+                    monto=bloqueado["precio"],
+                    referencia_ext=datos.referencia_ext,
+                    metodo=datos.metodo,
+                    ultimos4=(datos.ultimos4 or "").strip(),
+                )
+            )
+        except RuntimeError as exc:
+            raise HTTPException(status_code=502, detail="La pasarela no pudo abrir el cobro") from exc
+        await guardar_intencion(
+            sesion,
+            boleto_id=int(bloqueado["id"]),
+            usuario_id=int(bloqueado["usuario_id"]),
+            metodo=datos.metodo,
+            client_tx_id=datos.referencia_ext,
+            id_externo=cobro.id_externo,
+            monto=bloqueado["precio"],
+            proveedor=cobro.proveedor,
+            facturacion=datos.facturacion,
+        )
+        await sesion.commit()
+    except HTTPException:
+        await sesion.rollback()
+        raise
+    except SQLAlchemyError as exc:
+        await sesion.rollback()
+        traducir_error_mysql(exc)
+    return {
+        "estado": "pendiente",
+        "codigo": codigo,
+        "client_tx_id": datos.referencia_ext,
+        "redireccion": cobro.redireccion,
+        "qr_texto": cobro.qr_texto,
+        "id_externo": cobro.id_externo,
+        "mensaje": cobro.mensaje,
     }
 
 

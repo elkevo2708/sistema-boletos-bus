@@ -39,13 +39,53 @@ La contraseña se guarda con bcrypt. El cliente se registra desde **Ingresar →
 2. La franja y la ventana de promoción salen de los anuncios vigentes. En taquilla cada anuncio es de texto o de imagen, con fechas y un interruptor de activo. La ventana se cierra y queda oculta en esa pestaña del navegador. En taquilla no se muestra, para no tapar los formularios.
 3. **Noticias** lista las publicaciones y abre cada nota. **Galería** muestra la unidad real, destinos y terminales; al pulsar una foto se abre el visor. **Encomiendas** muestra la cobertura (La Maná, Quevedo, Quinsaloma, Moraspungo, Latacunga, Ambato, Quito, Guayaquil, Durán y Empalme) y los teléfonos: matriz 099 412 7992, Quevedo 098 040 5468, Guayaquil 099 117 5522, Durán 099 117 2085.
 4. En el mapa, verde es libre, azul es el asiento elegido, gris es ocupado y el rayado es bloqueado. El mapa se actualiza en vivo por `/ws/viajes/{id}`.
-5. Reserva (10 minutos) y elige el método: tarjeta, transferencia, PayPhone o efectivo en ventanilla. El cobro está simulado. El número de tarjeta no sale del navegador. En el mismo paso se piden los datos de facturación. Si la cédula o el RUC ya se usaron, se completan los nombres. El backend marca el boleto como pagado, emite la factura y devuelve el QR en PNG junto con el RIDE.
+5. Reserva (10 minutos) y elige DeUna!, tarjeta o PayPhone. Sin credenciales el cobro queda en modo de prueba. El número de tarjeta no sale del navegador. Al escribir una cédula o un RUC válido se completan los nombres. El backend marca el boleto como pagado, emite la factura y devuelve el QR en PNG junto con el RIDE.
 6. **Mis facturas** lista los comprobantes de la cuenta y permite descargar el XML y el RIDE.
-7. En **Taquilla**, la cuenta administradora crea ciudades, rutas y buses (con la disposición de asientos), programa y cancela viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día, filtra facturas, reenvía el RIDE, descarga XML y RIDE, edita el emisor y administra noticias, anuncios e imágenes. Si un dato falta, el formulario lo dice en la página y no se queda callado.
+7. En **Taquilla**, la cuenta administradora crea ciudades, rutas y buses (con la disposición de asientos), programa y cancela viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día, filtra facturas por DeUna, tarjeta o PayPhone, activa o desactiva cada forma de pago, edita la portada, reenvía el RIDE, descarga XML y RIDE, edita el emisor y administra noticias, anuncios e imágenes. Si un dato falta, el formulario lo dice en la página y no se queda callado.
 
 ## Pagos
 
-`app/pagos.py` define `ProveedorPago`. Cada método (`tarjeta`, `transferencia`, `payphone`, `efectivo`) tiene un adaptador en `REGISTRO`. Hoy todos son `PasarelaSimulada`: aprueban el cobro y devuelven el proveedor `simulado:<metodo>`. Una pasarela real reemplaza esa clase y se registra con la misma clave, sin tocar la reserva ni el QR.
+Quedan tres métodos: **DeUna!**, **tarjeta** y **PayPhone**. Transferencia y efectivo salen del checkout, del enum y del filtro de facturas. Si una base vieja tiene esos cobros, `database/migracion_pagos_portada.sql` los pasa a `payphone` y deja el proveedor original en la columna `proveedor`.
+
+`PAGOS_MODO` vale `sandbox` por defecto: el botón Pagar aprueba el cobro sin banco. Con `PAGOS_MODO=live` y las credenciales de cada método, el servidor habla con el proveedor. En taquilla, **Pagos** muestra si el método está activo y si faltan variables.
+
+| Variable | Para qué |
+| --- | --- |
+| `PAYPHONE_TOKEN` | Token Bearer de la app en PayPhone Business (Developer). |
+| `PAYPHONE_STORE_ID` | Id de la tienda, el `storeId` de [Prepare](https://docs.payphone.app/boton-de-pago). |
+| `PAYPHONE_API_URL` | Opcional. Por defecto `https://pay.payphonetodoesposible.com/api/button`. |
+| `DEUNA_API_KEY` | Cabecera `X-Api-Key` de DeUna para crear la orden y el QR. |
+| `DEUNA_API_SECRET` | Secreto HMAC del webhook (`X-Deuna-Signature`, SHA-256 del cuerpo en hexadecimal). |
+| `DEUNA_API_URL` | Opcional. Por defecto `https://api.sandbox.deuna.io`. |
+| `DEUNA_POINT_OF_SALE` | `store_code` de la orden. Si queda vacío se usa `all`. |
+| `TARJETA_PROVEEDOR` | `payphone` (formulario `payWithCard`, el PAN no llega aquí) o `propio`. |
+| `TARJETA_API_URL` y `TARJETA_API_KEY` | Procesador propio. Recibe centavos, referencia, últimos 4 e `X-Idempotency-Key`. |
+| `PAGOS_WEBHOOK_SECRETO` | Firma de prueba `X-Lamana-Firma` si no hay secreto de DeUna. |
+| `PUBLIC_BASE_URL` | Origen público, por ejemplo `https://boletos.lamana.ec`, para la URL de respuesta. |
+
+PayPhone: `POST /api/button/Prepare` (montos en centavos, `clientTransactionId`, USD, zona -5) y `POST /api/button/V2/Confirm`. Una transacción aprobada trae `statusCode` 3. Hay que confirmarla en menos de cinco minutos. DeUna: `POST /merchants/orders` con `notify_order` y consulta de estado. El webhook repetido no cobra dos veces.
+
+## Portada
+
+En taquilla, **Portada** crea diapositivas de imagen o de video (MP4, WebM, YouTube o Vimeo), con título, subtítulo, botón, orden y un interruptor de activo. La vista previa usa los mismos datos. En el inicio el video se reproduce solo, sin sonido y en bucle; si no puede, queda la foto de respaldo. La foto del bus es la diapositiva inicial. La tarjeta de búsqueda queda encima.
+
+## Consulta de cédula
+
+Al completar 10 dígitos de cédula o 13 de RUC, el checkout y el pasajero consultan el nombre. Primero mira `clientes_facturacion`. Si no está y `IDENTIFICACION_LOOKUP_URL` tiene valor, llama a ese JSON. No se abren páginas del SRI ni del Registro Civil.
+
+| Variable | Para qué |
+| --- | --- |
+| `IDENTIFICACION_LOOKUP_URL` | URL del servicio contratado. Vacía: modo demo. |
+| `IDENTIFICACION_LOOKUP_API_KEY` | Credencial. |
+| `IDENTIFICACION_LOOKUP_HEADER` | Cabecera. Por defecto `Authorization`. |
+| `IDENTIFICACION_LOOKUP_SCHEME` | Prefijo. Por defecto `Bearer`. Vacío envía la clave sola. |
+| `IDENTIFICACION_LOOKUP_METODO` | `GET` o `POST`. |
+| `IDENTIFICACION_LOOKUP_CAMPO_NOMBRE` | Rutas JSON separadas por coma. Por defecto `nombres,apellidos`. También acepta `data.nombreCompleto`. |
+| `IDENTIFICACION_LOOKUP_CAMPO_DIRECCION` | Por defecto `direccion`. |
+| `IDENTIFICACION_LOOKUP_CAMPO_EMAIL` | Por defecto `email`. |
+| `IDENTIFICACION_LOOKUP_CAMPO_TELEFONO` | Por defecto `telefono`. |
+
+En demo, además de María Cedeño (`1710034065`, ya guardada), responden `0926687856` José Andrade Mera, `0602813990` Luisa Quishpe Tixi, `1104680135` Carlos Rivera Salinas, `1758439200` Ana Beltrán Moya, `1312567843` Pedro Zambrano Cedeño, y los RUC `1710034065001` y `0926687856001`. `0912345675` es válida y no está en el catálogo.
 
 ## Facturación electrónica
 
@@ -88,6 +128,10 @@ La vista `v_disponibilidad` clasifica cada puesto del viaje en `libre`, `bloquea
 | GET | `/ciudades` | Origen y destino del buscador |
 | GET | `/viajes?origen&destino&fecha` | Salidas que todavía no han partido |
 | GET | `/viajes/proximas?origen&destino&desde` | Próximas fechas con cupo en esa ruta |
+| GET | `/pagos/metodos` | DeUna, tarjeta y PayPhone activos |
+| POST | `/pagos/webhooks/deuna` y `/payphone` | Confirmación firmada e idempotente |
+| GET | `/portada` | Diapositivas activas del inicio |
+| GET | `/facturacion/consulta?tipo&identificacion` | Nombre al completar cédula o RUC |
 | POST | `/admin/horarios/generar` | Completa 30 días desde la tabla `horarios`, sin duplicar |
 | GET | `/viajes/{id}/asientos` | Mapa leído de `v_disponibilidad` |
 | POST | `/boletos/reservar` | Reserva 10 minutos |

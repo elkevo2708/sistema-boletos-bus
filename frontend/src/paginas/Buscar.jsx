@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
+import HeroPortada from '../componentes/HeroPortada';
 import { fechaBogota, formatearDia, formatearFechaHora, formatearDinero } from '../formato';
 
 const RUTAS = [
@@ -20,7 +21,7 @@ const DESTINOS = [
 const SERVICIOS = [
   ['Asiento numerado', 'Elige el puesto en el mapa antes de pagar. Nadie más puede tomarlo mientras la reserva esté vigente.'],
   ['Pasaje en línea', 'Origen, destino y fecha. La reserva dura diez minutos y el QR queda listo al confirmar.'],
-  ['Cuatro formas de pago', 'Tarjeta, transferencia, PayPhone o efectivo en la ventanilla del terminal de La Maná.'],
+  ['Tres formas de pago', 'DeUna!, tarjeta de crédito o débito, y PayPhone.'],
   ['Equipaje de bodega', 'Etiquétalo con tu nombre y el número de asiento. En el bus de dos pisos el pasillo va despejado.'],
   ['Taquilla de madrugada', 'El andén abre a las 05:00. Llega veinte minutos antes: el abordaje cierra cuando el disco enciende luces.'],
   ['Horario de Ecuador', 'Todas las salidas se publican en hora local, sin conversión. La taquilla cierra a las 21:00.'],
@@ -138,12 +139,7 @@ export default function Buscar() {
 
   return (
     <div>
-      <section className="hero">
-        <div className="hero-texto">
-          <p className="sobrelinea">Cotopaxi · Los Ríos · Sierra y costa</p>
-          <h1>Viaja desde La Maná con el asiento ya elegido.</h1>
-          <p className="lead">Salidas a Quevedo, Latacunga, Quito, Ambato y Guayaquil. Reserva en línea y aborda con tu código QR.</p>
-        </div>
+      <HeroPortada>
         <form id="buscar" className="panel-busqueda" noValidate onSubmit={buscar}>
           <label>
             Origen
@@ -175,7 +171,7 @@ export default function Buscar() {
           </button>
         </form>
         {error && <p className="aviso aviso-hero" role="alert">{error}</p>}
-      </section>
+      </HeroPortada>
 
       <section className="cifras" aria-label="La cooperativa en cifras">
         <article><strong>7</strong><span>Ciudades en la red</span></article>
@@ -368,7 +364,7 @@ export default function Buscar() {
           <ol>
             <li><strong>1</strong><span>Elige origen, destino y fecha.</span></li>
             <li><strong>2</strong><span>Marca el asiento en el mapa del bus.</span></li>
-            <li><strong>3</strong><span>Paga con tarjeta, transferencia, PayPhone o en ventanilla.</span></li>
+            <li><strong>3</strong><span>Paga con DeUna!, tarjeta o PayPhone.</span></li>
             <li><strong>4</strong><span>Descarga el QR y preséntalo al abordar.</span></li>
           </ol>
         </div>
@@ -405,7 +401,7 @@ export default function Buscar() {
             <h2>Antes de viajar.</h2>
           </div>
           {[
-            ['¿Cómo puedo pagar?', 'En línea aceptamos tarjeta de crédito o débito, transferencia al Banco del Pacífico y PayPhone. También puedes dejar el pago en efectivo en la ventanilla del terminal de La Maná, con el QR de la reserva.'],
+            ['¿Cómo puedo pagar?', 'En línea aceptamos DeUna! (la billetera de Banco Pichincha), tarjeta de crédito o débito y PayPhone. El número de tarjeta no sale de su navegador.'],
             ['¿Cómo recibo el boleto?', 'Al confirmar el pago aparece el código QR en pantalla. Ese código es el boleto: muéstralo en el andén. La reserva sin pago dura diez minutos y después el asiento vuelve a quedar libre.'],
             ['¿Puedo cancelar o cambiar la fecha?', 'Puedes cancelar mientras el boleto siga reservado y no se haya pagado. Un pasaje ya pagado no se cambia de fecha en esta boletería: hay que comprar la nueva salida.'],
           ].map(([pregunta, respuesta], indice) => (

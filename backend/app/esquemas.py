@@ -106,13 +106,24 @@ class FacturacionIn(BaseModel):
 
 class PagarIn(BaseModel):
     referencia_ext: str = Field(min_length=4, max_length=64)
-    metodo: Literal["tarjeta", "transferencia", "payphone", "efectivo"] = "efectivo"
+    metodo: Literal["deuna", "tarjeta", "payphone"]
+    ultimos4: str | None = Field(default=None, max_length=4)
     facturacion: FacturacionIn
 
     @field_validator("referencia_ext")
     @classmethod
     def sin_bordes(cls, valor: str) -> str:
         return valor.strip()
+
+
+class PortadaIn(BaseModel):
+    titulo: str = Field(min_length=3, max_length=160)
+    subtitulo: str = ""
+    texto_boton: str = ""
+    enlace_boton: str = ""
+    enlace: str | None = None
+    orden: int = 0
+    activo: bool = True
 
 
 class EmisorIn(BaseModel):
