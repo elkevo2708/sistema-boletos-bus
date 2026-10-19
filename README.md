@@ -36,12 +36,12 @@ La contraseña se guarda con bcrypt. El cliente se registra desde **Ingresar →
 ## Recorrido
 
 1. En el inicio, elige origen, destino y fecha. Mañana hay salidas de prueba, por ejemplo La Maná → Quevedo y La Maná → Latacunga.
-2. La franja y la ventana de promoción salen de los anuncios vigentes. Se pueden cerrar; quedan ocultas en esa pestaña del navegador.
+2. La franja y la ventana de promoción salen de los anuncios vigentes. En taquilla cada anuncio es de texto o de imagen, con fechas y un interruptor de activo. La ventana se cierra y queda oculta en esa pestaña del navegador. En taquilla no se muestra, para no tapar los formularios.
 3. **Noticias** lista las publicaciones y abre cada nota. **Galería** muestra la unidad real, destinos y terminales; al pulsar una foto se abre el visor. **Encomiendas** muestra la cobertura (La Maná, Quevedo, Quinsaloma, Moraspungo, Latacunga, Ambato, Quito, Guayaquil, Durán y Empalme) y los teléfonos: matriz 099 412 7992, Quevedo 098 040 5468, Guayaquil 099 117 5522, Durán 099 117 2085.
 4. En el mapa, verde es libre, azul es el asiento elegido, gris es ocupado y el rayado es bloqueado. El mapa se actualiza en vivo por `/ws/viajes/{id}`.
 5. Reserva (10 minutos) y elige el método: tarjeta, transferencia, PayPhone o efectivo en ventanilla. El cobro está simulado. El número de tarjeta no sale del navegador. En el mismo paso se piden los datos de facturación. Si la cédula o el RUC ya se usaron, se completan los nombres. El backend marca el boleto como pagado, emite la factura y devuelve el QR en PNG junto con el RIDE.
 6. **Mis facturas** lista los comprobantes de la cuenta y permite descargar el XML y el RIDE.
-7. En **Taquilla**, la cuenta administradora crea viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día, filtra facturas, reenvía el RIDE, descarga XML y RIDE, edita el emisor y administra noticias, anuncios e imágenes.
+7. En **Taquilla**, la cuenta administradora crea ciudades, rutas y buses (con la disposición de asientos), programa y cancela viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día, filtra facturas, reenvía el RIDE, descarga XML y RIDE, edita el emisor y administra noticias, anuncios e imágenes. Si un dato falta, el formulario lo dice en la página y no se queda callado.
 
 ## Pagos
 
@@ -92,12 +92,14 @@ La vista `v_disponibilidad` clasifica cada puesto del viaje en `libre`, `bloquea
 | POST | `/boletos/{codigo}/pagar` | `SELECT FOR UPDATE`, método de pago, referencia única, factura, QR |
 | POST | `/boletos/{codigo}/cancelar` | Libera el asiento |
 | GET | `/blog` y `/blog/{slug}` | Noticias y destinos publicados |
-| GET | `/anuncios` | Promociones vigentes (franja o ventana) |
+| GET | `/anuncios` | Promociones vigentes. `formato` es `texto` o `imagen` |
 | GET | `/galeria` | Fotos públicas |
-| POST | `/admin/viajes` | Crea un viaje (rol administrador) |
+| POST / DELETE | `/admin/ciudades`, `/admin/rutas` | Alta y baja de ciudades y rutas |
+| POST / PATCH / DELETE | `/admin/buses` | Crea el bus y sus asientos (4 por fila), cambia el estado o lo elimina si no tiene viajes |
+| POST / DELETE | `/admin/viajes` | Crea un viaje. Eliminar lo cancela si no hay pasajes vigentes |
 | PATCH | `/admin/rutas/{id}/tarifa` | Cambia la tarifa y audita |
 | GET | `/admin/ventas?fecha` | Reporte diario |
-| CRUD | `/admin/blog`, `/admin/anuncios`, `/admin/galeria` | Contenido. La galería recibe `multipart` (JPG, PNG o WebP, hasta 5 MB) |
+| CRUD | `/admin/blog`, `/admin/anuncios`, `/admin/galeria` | Contenido. Anuncios y galería reciben `multipart` (JPG, PNG o WebP, hasta 5 MB). El anuncio de imagen guarda el archivo; el de texto guarda título y mensaje |
 | GET | `/facturacion/consulta?tipo&identificacion` | Razón social local o del proveedor contratado |
 | GET | `/facturacion/mias` | Facturas del cliente |
 | GET | `/facturacion/{id}/ride` y `/xml` | RIDE y XML, del dueño o de taquilla |

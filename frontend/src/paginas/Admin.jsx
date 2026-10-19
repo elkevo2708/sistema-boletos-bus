@@ -5,11 +5,13 @@ import { useAuth } from '../contexto/AuthContext';
 import { ahoraBogotaInput, fechaBogota, formatearFechaHora, formatearPesos } from '../formato';
 import { PanelAnuncios, PanelBlog, PanelGaleria } from './AdminContenido';
 import { PanelEmisor, PanelFacturas } from './AdminFacturas';
+import PanelFlota from './AdminFlota';
 
 export default function Admin() {
   const { usuario, token } = useAuth();
   const [rutas, setRutas] = useState([]);
   const [buses, setBuses] = useState([]);
+  const [viajes, setViajes] = useState([]);
   const [ventas, setVentas] = useState(null);
   const [fecha, setFecha] = useState(fechaBogota(0));
   const [mensaje, setMensaje] = useState('');
@@ -24,34 +26,72 @@ export default function Admin() {
     Promise.all([
       solicitar('/admin/rutas', { token }),
       solicitar('/admin/buses', { token }),
+      solicitar('/admin/viajes', { token }),
       solicitar(`/admin/ventas?fecha=${fechaBogota(0)}`, { token }),
-    ]).then(([listaRutas, listaBuses, reporte]) => {
+    ]).then(([listaRutas, listaBuses, listaViajes, reporte]) => {
       setRutas(listaRutas);
       setBuses(listaBuses);
+      setViajes(listaViajes);
       setVentas(reporte);
     }).catch((err) => setError(err.message));
   }, [esAdmin, token]);
 
+  function recargarCatalogo() {
+    return Promise.all([
+      solicitar('/admin/rutas', { token }),
+      solicitar('/admin/buses', { token }),
+      solicitar('/admin/viajes', { token }),
+    ]).then(([listaRutas, listaBuses, listaViajes]) => {
+      setRutas(listaRutas);
+      setBuses(listaBuses);
+      setViajes(listaViajes);
+    });
+  }
+
   async function crearViaje(event) {
     event.preventDefault();
     const datos = new FormData(event.currentTarget);
-    const precio = datos.get('precio');
-    setOcupado(true);
+    const rutaId = datos.get('ruta_id');
+    const busId = datos.get('bus_id');
+    const salida = String(datos.get('salida') || '');
+    const precio = String(datos.get('precio') || '').trim();
     setError('');
     setMensaje('');
+    if (!rutaId) {
+      setError('Selecciona la ruta del viaje.');
+      return;
+    }
+    if (!busId) {
+      setError('Selecciona el bus del viaje.');
+      return;
+    }
+    if (!salida) {
+      setError('Indica la fecha y hora de salida.');
+      return;
+    }
+    if (salida <= ahoraBogotaInput()) {
+      setError('La salida debe ser futura.');
+      return;
+    }
+    if (precio && Number(precio) <= 0) {
+      setError('El precio debe ser mayor que cero.');
+      return;
+    }
+    setOcupado(true);
     try {
       const creado = await solicitar('/admin/viajes', {
         method: 'POST',
         token,
         body: {
-          ruta_id: Number(datos.get('ruta_id')),
-          bus_id: Number(datos.get('bus_id')),
-          salida: datos.get('salida'),
-          precio: precio ? precio : null,
+          ruta_id: Number(rutaId),
+          bus_id: Number(busId),
+          salida,
+          precio: precio || null,
         },
       });
       setMensaje(`Viaje ${creado.id} creado. Llega ${formatearFechaHora(creado.llegada_est)} a ${formatearPesos(creado.precio)}.`);
       event.currentTarget.reset();
+      await recargarCatalogo();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -62,20 +102,45 @@ export default function Admin() {
   async function cambiarTarifa(event) {
     event.preventDefault();
     const datos = new FormData(event.currentTarget);
-    setOcupado(true);
+    const rutaId = datos.get('ruta_id');
+    const precio = String(datos.get('precio_base') || '').trim();
     setError('');
     setMensaje('');
+    if (!rutaId) {
+      setError('Selecciona la ruta a retarifar.');
+      return;
+    }
+    if (!precio || Number(precio) <= 0) {
+      setError('La tarifa debe ser mayor que cero.');
+      return;
+    }
+    setOcupado(true);
     try {
-      const rutaId = datos.get('ruta_id');
       const actualizada = await solicitar(`/admin/rutas/${rutaId}/tarifa`, {
         method: 'PATCH',
         token,
-        body: { precio_base: datos.get('precio_base') },
+        body: { precio_base: precio },
       });
       setMensaje(`Tarifa actualizada a ${formatearPesos(actualizada.precio_base)}. Quedó registro en auditoría.`);
       setRutas((actual) => actual.map((ruta) => (
         String(ruta.id) === String(rutaId) ? { ...ruta, precio_base: actualizada.precio_base } : ruta
       )));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function cancelarViaje(viaje) {
+    if (!window.confirm(`¿Cancelar el viaje ${viaje.origen} → ${viaje.destino}?`)) return;
+    setError('');
+    setMensaje('');
+    setOcupado(true);
+    try {
+      await solicitar(`/admin/viajes/${viaje.id}`, { method: 'DELETE', token });
+      setMensaje(`Viaje ${viaje.id} cancelado.`);
+      await recargarCatalogo();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -122,6 +187,7 @@ export default function Admin() {
       <div className="filtros" role="tablist" aria-label="Secciones de taquilla">
         {[
           ['operacion', 'Operación'],
+          ['flota', 'Flota'],
           ['facturas', 'Facturas'],
           ['emisor', 'Emisor'],
           ['blog', 'Noticias'],
@@ -136,6 +202,7 @@ export default function Admin() {
       {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
       {error && <p className="aviso" role="alert">{error}</p>}
 
+      {pestana === 'flota' && <PanelFlota token={token} onCambio={recargarCatalogo} />}
       {pestana === 'facturas' && <PanelFacturas token={token} />}
       {pestana === 'emisor' && <PanelEmisor token={token} />}
       {pestana === 'blog' && <PanelBlog token={token} />}
@@ -145,12 +212,12 @@ export default function Admin() {
       {pestana === 'operacion' && (
       <>
       <div className="rejilla-admin">
-        <form className="panel-form" onSubmit={crearViaje}>
+        <form className="panel-form" noValidate onSubmit={crearViaje}>
           <h2>Crear viaje</h2>
           <label>
             Ruta
-            <select name="ruta_id" required defaultValue="" aria-label="Ruta del viaje">
-              <option value="" disabled>Selecciona</option>
+            <select name="ruta_id" defaultValue="" aria-label="Ruta del viaje">
+              <option value="">Selecciona</option>
               {rutas.map((ruta) => (
                 <option key={ruta.id} value={ruta.id}>
                   {ruta.origen} → {ruta.destino} · {ruta.duracion_min} min · {formatearPesos(ruta.precio_base)}
@@ -160,8 +227,8 @@ export default function Admin() {
           </label>
           <label>
             Bus
-            <select name="bus_id" required defaultValue="" aria-label="Bus del viaje">
-              <option value="" disabled>Selecciona</option>
+            <select name="bus_id" defaultValue="" aria-label="Bus del viaje">
+              <option value="">Selecciona</option>
               {buses.map((bus) => (
                 <option key={bus.id} value={bus.id} disabled={bus.estado !== 'operativo'}>
                   Disco {bus.numero_disco} · {bus.placa} · {bus.capacidad} puestos · {bus.estado}
@@ -171,7 +238,7 @@ export default function Admin() {
           </label>
           <label>
             Salida
-            <input type="datetime-local" name="salida" required min={ahoraBogotaInput()} aria-label="Fecha y hora de salida" />
+            <input type="datetime-local" name="salida" aria-label="Fecha y hora de salida" />
           </label>
           <label>
             Precio (opcional, usa la tarifa de la ruta)
@@ -180,12 +247,12 @@ export default function Admin() {
           <button type="submit" className="btn btn-arcilla" disabled={ocupado} aria-label="Crear viaje">Crear viaje</button>
         </form>
 
-        <form className="panel-form" onSubmit={cambiarTarifa}>
+        <form className="panel-form" noValidate onSubmit={cambiarTarifa}>
           <h2>Cambiar tarifa</h2>
           <label>
             Ruta
-            <select name="ruta_id" required defaultValue="" aria-label="Ruta a retarifar">
-              <option value="" disabled>Selecciona</option>
+            <select name="ruta_id" defaultValue="" aria-label="Ruta a retarifar">
+              <option value="">Selecciona</option>
               {rutas.map((ruta) => (
                 <option key={ruta.id} value={ruta.id}>
                   {ruta.origen} → {ruta.destino} · hoy {formatearPesos(ruta.precio_base)}
@@ -195,11 +262,32 @@ export default function Admin() {
           </label>
           <label>
             Nueva tarifa base
-            <input type="number" name="precio_base" required min="1" step="0.01" aria-label="Nueva tarifa base" />
+            <input type="number" name="precio_base" min="0.01" step="0.01" aria-label="Nueva tarifa base" />
           </label>
           <button type="submit" className="btn btn-pino" disabled={ocupado} aria-label="Actualizar tarifa">Actualizar tarifa</button>
         </form>
       </div>
+
+      <section className="panel-form">
+        <h2>Viajes próximos</h2>
+        <ul className="lista-admin">
+          {viajes.length ? viajes.map((viaje) => (
+            <li key={viaje.id}>
+              <strong>{viaje.origen} → {viaje.destino}</strong>
+              <span>
+                {formatearFechaHora(viaje.salida)} · disco {viaje.numero_disco} · {formatearPesos(viaje.precio)} · {viaje.estado}
+              </span>
+              {viaje.estado === 'programado' && (
+                <div>
+                  <button type="button" onClick={() => cancelarViaje(viaje)} disabled={ocupado} aria-label={`Cancelar viaje ${viaje.id}`}>
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </li>
+          )) : <li>No hay viajes en la ventana reciente.</li>}
+        </ul>
+      </section>
 
       <section className="panel-form ventas">
         <div className="ventas-cabeza">

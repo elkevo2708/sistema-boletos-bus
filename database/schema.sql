@@ -194,8 +194,11 @@ CREATE TABLE blog_posts (
 CREATE TABLE anuncios (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   titulo VARCHAR(140) NOT NULL,
-  mensaje VARCHAR(500) NOT NULL,
+  mensaje VARCHAR(500) NULL,
   enlace VARCHAR(255) NULL,
+  texto_boton VARCHAR(80) NULL,
+  formato ENUM('texto', 'imagen') NOT NULL DEFAULT 'texto',
+  imagen VARCHAR(255) NULL,
   tipo ENUM('banner', 'modal') NOT NULL DEFAULT 'banner',
   activo TINYINT(1) NOT NULL DEFAULT 1,
   inicio DATE NOT NULL,

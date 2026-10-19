@@ -32,9 +32,22 @@ def traducir_error_mysql(exc: SQLAlchemyError) -> None:
             raise HTTPException(status_code=409, detail="El correo ya está registrado") from exc
         if "uk_usuarios_documento" in texto:
             raise HTTPException(status_code=409, detail="El documento ya está registrado") from exc
+        if "uk_ciudades" in texto:
+            raise HTTPException(status_code=409, detail="Esa ciudad ya está registrada") from exc
+        if "uk_rutas_par" in texto:
+            raise HTTPException(status_code=409, detail="Esa ruta ya existe") from exc
+        if "uk_buses_placa" in texto:
+            raise HTTPException(status_code=409, detail="Esa placa ya está registrada") from exc
+        if "uk_buses_disco" in texto:
+            raise HTTPException(status_code=409, detail="Ese número de disco ya está registrado") from exc
         raise HTTPException(status_code=409, detail="Registro duplicado") from exc
     if numero == 1644:
         raise HTTPException(status_code=422, detail=texto) from exc
+    if numero == 1451:
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar porque otros registros todavía lo usan",
+        ) from exc
     if numero == 1452:
         raise HTTPException(status_code=422, detail="Viaje, asiento o usuario inexistente") from exc
     if numero == 3819:

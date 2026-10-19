@@ -30,13 +30,20 @@ export function PanelFacturas({ token }) {
   }, [token]);
 
   async function descargar(factura, tipo) {
-    const blob = await traerArchivo(`/admin/facturas/${factura.id}/${tipo}`, token);
-    const url = URL.createObjectURL(blob);
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = `${tipo === 'ride' ? 'RIDE' : 'Factura'}-${factura.numero}.${tipo === 'ride' ? 'pdf' : 'xml'}`;
-    enlace.click();
-    URL.revokeObjectURL(url);
+    setAviso('');
+    setError('');
+    try {
+      const blob = await traerArchivo(`/admin/facturas/${factura.id}/${tipo}`, token);
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = `${tipo === 'ride' ? 'RIDE' : 'Factura'}-${factura.numero}.${tipo === 'ride' ? 'pdf' : 'xml'}`;
+      enlace.click();
+      URL.revokeObjectURL(url);
+      setAviso(tipo === 'ride' ? `RIDE de ${factura.numero} descargado.` : `XML de ${factura.numero} descargado.`);
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   async function reenviar(factura) {
@@ -136,8 +143,35 @@ export function PanelEmisor({ token }) {
   async function guardar(event) {
     event.preventDefault();
     const datos = new FormData(event.currentTarget);
+    const ruc = String(datos.get('ruc') || '').trim();
+    const razon = String(datos.get('razon_social') || '').trim();
+    const comercial = String(datos.get('nombre_comercial') || '').trim();
+    const direccion = String(datos.get('direccion_matriz') || '').trim();
+    const establecimiento = String(datos.get('establecimiento') || '').trim();
+    const punto = String(datos.get('punto_emision') || '').trim();
+    const iva = String(datos.get('tarifa_iva_pasaje') || '').trim();
     setError('');
     setAviso('');
+    if (!/^\d{13}$/.test(ruc)) {
+      setError('El RUC del emisor debe tener 13 dígitos.');
+      return;
+    }
+    if (razon.length < 3 || comercial.length < 3) {
+      setError('La razón social y el nombre comercial necesitan al menos 3 caracteres.');
+      return;
+    }
+    if (!/^\d{1,3}$/.test(establecimiento) || !/^\d{1,3}$/.test(punto)) {
+      setError('Establecimiento y punto de emisión usan solo dígitos.');
+      return;
+    }
+    if (direccion.length < 4) {
+      setError('La dirección matriz es demasiado corta.');
+      return;
+    }
+    if (iva === '' || Number(iva) < 0 || Number(iva) > 100) {
+      setError('El IVA del pasaje debe estar entre 0 y 100.');
+      return;
+    }
     try {
       const guardado = await solicitar('/admin/emisor', {
         method: 'PUT',
@@ -164,34 +198,34 @@ export function PanelEmisor({ token }) {
   if (!emisor) return error ? <p className="aviso" role="alert">{error}</p> : <p>Cargando emisor…</p>;
 
   return (
-    <form className="panel-form panel-corto" onSubmit={guardar}>
+    <form className="panel-form panel-corto" noValidate onSubmit={guardar}>
       <h2>Emisor</h2>
       <p className="meta">Secuencial actual {emisor.secuencial}. El siguiente comprobante usa el número siguiente, con bloqueo de fila.</p>
       <label>
         RUC
-        <input name="ruc" required defaultValue={emisor.ruc} minLength={13} maxLength={13} aria-label="RUC del emisor" />
+        <input name="ruc" defaultValue={emisor.ruc} maxLength={13} aria-label="RUC del emisor" />
       </label>
       <label>
         Razón social
-        <input name="razon_social" required defaultValue={emisor.razon_social} aria-label="Razón social del emisor" />
+        <input name="razon_social" defaultValue={emisor.razon_social} aria-label="Razón social del emisor" />
       </label>
       <label>
         Nombre comercial
-        <input name="nombre_comercial" required defaultValue={emisor.nombre_comercial} aria-label="Nombre comercial" />
+        <input name="nombre_comercial" defaultValue={emisor.nombre_comercial} aria-label="Nombre comercial" />
       </label>
       <div className="dos">
         <label>
           Establecimiento
-          <input name="establecimiento" required defaultValue={emisor.establecimiento} aria-label="Establecimiento" />
+          <input name="establecimiento" defaultValue={emisor.establecimiento} aria-label="Establecimiento" />
         </label>
         <label>
           Punto de emisión
-          <input name="punto_emision" required defaultValue={emisor.punto_emision} aria-label="Punto de emisión" />
+          <input name="punto_emision" defaultValue={emisor.punto_emision} aria-label="Punto de emisión" />
         </label>
       </div>
       <label>
         Dirección matriz
-        <input name="direccion_matriz" required defaultValue={emisor.direccion_matriz} aria-label="Dirección matriz" />
+        <input name="direccion_matriz" defaultValue={emisor.direccion_matriz} aria-label="Dirección matriz" />
       </label>
       <label>
         Ambiente
@@ -202,7 +236,7 @@ export function PanelEmisor({ token }) {
       </label>
       <label>
         IVA del pasaje (%)
-        <input name="tarifa_iva_pasaje" type="number" min="0" max="100" step="0.01" required defaultValue={emisor.tarifa_iva_pasaje} aria-label="Tarifa de IVA del pasaje" />
+        <input name="tarifa_iva_pasaje" type="number" min="0" max="100" step="0.01" defaultValue={emisor.tarifa_iva_pasaje} aria-label="Tarifa de IVA del pasaje" />
       </label>
       <label className="check">
         <input type="checkbox" name="obligado_contabilidad" defaultChecked={Boolean(Number(emisor.obligado_contabilidad))} />

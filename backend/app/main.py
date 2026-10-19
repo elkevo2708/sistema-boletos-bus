@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
+from app.migraciones import asegurar_esquema
 from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, tiempo_real, viajes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -23,6 +24,7 @@ async def vida(_app: FastAPI):
         try:
             async with engine.connect() as conexion:
                 await conexion.execute(text("SELECT 1"))
+            await asegurar_esquema()
             log.info("Conexión a MySQL lista")
             break
         except Exception as exc:

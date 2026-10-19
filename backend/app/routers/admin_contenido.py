@@ -23,11 +23,43 @@ TOPE = 5 * 1024 * 1024
 
 
 def _publicar(fila: dict) -> dict:
-    if fila.get("imagen"):
-        fila["imagen"] = f"/medios/{fila['imagen']}"
-    if fila.get("archivo"):
+    for campo in ("imagen", "archivo"):
+        valor = fila.get(campo)
+        if valor and not str(valor).startswith("/medios/"):
+            if campo == "archivo":
+                fila["url"] = f"/medios/{valor}"
+            else:
+                fila[campo] = f"/medios/{valor}"
+    if fila.get("archivo") and "url" not in fila:
         fila["url"] = f"/medios/{fila['archivo']}"
     return fila
+
+
+def _nombre_archivo(valor: str | None) -> str | None:
+    if not valor:
+        return None
+    limpio = str(valor).strip().lstrip("/")
+    if limpio.startswith("medios/"):
+        limpio = limpio[len("medios/") :]
+    return limpio or None
+
+
+async def _guardar_upload(archivo: UploadFile) -> str:
+    from secrets import token_hex
+
+    extension = TIPOS.get(archivo.content_type or "")
+    if extension is None and archivo.filename:
+        sufijo = Path(archivo.filename).suffix.lower()
+        extension = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}.get(sufijo)
+    if extension is None:
+        raise HTTPException(status_code=422, detail="Solo se aceptan imágenes JPG, PNG o WebP")
+    contenido = await archivo.read()
+    if not contenido or len(contenido) > TOPE:
+        raise HTTPException(status_code=422, detail="La imagen debe pesar entre 1 byte y 5 MB")
+    nombre = f"{token_hex(8)}{extension}"
+    MEDIOS.mkdir(parents=True, exist_ok=True)
+    (MEDIOS / nombre).write_bytes(contenido)
+    return nombre
 
 
 async def _slug_libre(sesion: AsyncSession, titulo: str, propio: int | None = None) -> str:
@@ -142,70 +174,163 @@ async def admin_anuncios(sesion: AsyncSession = Depends(obtener_sesion)):
         await sesion.execute(
             text(
                 """
-                SELECT id, titulo, mensaje, enlace, tipo, activo, inicio, fin
+                SELECT id, titulo, mensaje, enlace, texto_boton, formato, imagen, tipo, activo, inicio, fin
                   FROM anuncios
                  ORDER BY inicio DESC, id DESC
                 """
             )
         )
     ).mappings().all()
-    return [fila_a_dict(fila) for fila in filas]
+    return [_publicar(fila_a_dict(fila)) for fila in filas]
+
+
+def _anuncio_modelo(**campos) -> AnuncioIn:
+    try:
+        return AnuncioIn(**campos)
+    except Exception as exc:
+        errores = getattr(exc, "errors", None)
+        if callable(errores):
+            mensajes = [item.get("msg", "Dato inválido").removeprefix("Value error, ") for item in errores()]
+            raise HTTPException(status_code=422, detail=". ".join(mensajes) or "Dato inválido") from exc
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+async def _persistir_anuncio(
+    sesion: AsyncSession,
+    datos: AnuncioIn,
+    imagen: UploadFile | None,
+    anuncio_id: int | None,
+) -> dict:
+    previa = None
+    if anuncio_id is not None:
+        previa = (
+            await sesion.execute(text("SELECT imagen FROM anuncios WHERE id = :id"), {"id": anuncio_id})
+        ).mappings().first()
+        if previa is None:
+            raise HTTPException(status_code=404, detail="Anuncio no encontrado")
+    nombre = _nombre_archivo(previa["imagen"]) if previa else None
+    nuevo = None
+    if datos.formato == "imagen":
+        if imagen is not None and imagen.filename:
+            nuevo = await _guardar_upload(imagen)
+            nombre = nuevo
+        if not nombre:
+            raise HTTPException(status_code=422, detail="La promoción con imagen necesita un archivo")
+    else:
+        nombre = None
+    valores = {
+        "titulo": datos.titulo,
+        "mensaje": datos.mensaje or None,
+        "enlace": datos.enlace,
+        "texto_boton": datos.texto_boton,
+        "formato": datos.formato,
+        "imagen": nombre,
+        "tipo": datos.tipo,
+        "activo": int(datos.activo),
+        "inicio": datos.inicio,
+        "fin": datos.fin,
+    }
+    try:
+        if anuncio_id is None:
+            resultado = await sesion.execute(
+                text(
+                    """
+                    INSERT INTO anuncios (
+                      titulo, mensaje, enlace, texto_boton, formato, imagen, tipo, activo, inicio, fin
+                    ) VALUES (
+                      :titulo, :mensaje, :enlace, :texto_boton, :formato, :imagen, :tipo, :activo, :inicio, :fin
+                    )
+                    """
+                ),
+                valores,
+            )
+            guardado = int(resultado.lastrowid)
+        else:
+            valores["id"] = anuncio_id
+            await sesion.execute(
+                text(
+                    """
+                    UPDATE anuncios
+                       SET titulo = :titulo, mensaje = :mensaje, enlace = :enlace,
+                           texto_boton = :texto_boton, formato = :formato, imagen = :imagen,
+                           tipo = :tipo, activo = :activo, inicio = :inicio, fin = :fin
+                     WHERE id = :id
+                    """
+                ),
+                valores,
+            )
+            guardado = anuncio_id
+        await sesion.commit()
+    except HTTPException:
+        if nuevo:
+            (MEDIOS / nuevo).unlink(missing_ok=True)
+        raise
+    except SQLAlchemyError as exc:
+        if nuevo:
+            (MEDIOS / nuevo).unlink(missing_ok=True)
+        await sesion.rollback()
+        traducir_error_mysql(exc)
+    anterior = _nombre_archivo(previa["imagen"]) if previa else None
+    if nuevo and anterior and anterior != nuevo and re.fullmatch(r"[0-9a-f]{16}\.(jpg|png|webp)", anterior):
+        (MEDIOS / anterior).unlink(missing_ok=True)
+    return {"id": guardado, "formato": datos.formato, "imagen": f"/medios/{nombre}" if nombre else None}
 
 
 @router.post("/anuncios", status_code=201)
-async def crear_anuncio(datos: AnuncioIn, sesion: AsyncSession = Depends(obtener_sesion)):
-    if datos.fin < datos.inicio:
-        raise HTTPException(status_code=422, detail="La fecha final no puede ser anterior al inicio")
-    resultado = await sesion.execute(
-        text(
-            """
-            INSERT INTO anuncios (titulo, mensaje, enlace, tipo, activo, inicio, fin)
-            VALUES (:titulo, :mensaje, :enlace, :tipo, :activo, :inicio, :fin)
-            """
-        ),
-        {
-            "titulo": datos.titulo,
-            "mensaje": datos.mensaje,
-            "enlace": datos.enlace,
-            "tipo": datos.tipo,
-            "activo": int(datos.activo),
-            "inicio": datos.inicio,
-            "fin": datos.fin,
-        },
+async def crear_anuncio(
+    titulo: str = Form(),
+    mensaje: str = Form(default=""),
+    enlace: str = Form(default=""),
+    texto_boton: str = Form(default=""),
+    tipo: str = Form(default="modal"),
+    formato: str = Form(default="texto"),
+    activo: str = Form(default="true"),
+    inicio: str = Form(),
+    fin: str = Form(),
+    imagen: UploadFile | None = File(default=None),
+    sesion: AsyncSession = Depends(obtener_sesion),
+):
+    datos = _anuncio_modelo(
+        titulo=titulo,
+        mensaje=mensaje,
+        enlace=enlace,
+        texto_boton=texto_boton,
+        tipo=tipo,
+        formato=formato,
+        activo=activo,
+        inicio=inicio,
+        fin=fin,
     )
-    await sesion.commit()
-    return {"id": resultado.lastrowid}
+    return await _persistir_anuncio(sesion, datos, imagen, None)
 
 
 @router.patch("/anuncios/{anuncio_id}")
-async def editar_anuncio(anuncio_id: int, datos: AnuncioIn, sesion: AsyncSession = Depends(obtener_sesion)):
-    if datos.fin < datos.inicio:
-        raise HTTPException(status_code=422, detail="La fecha final no puede ser anterior al inicio")
-    resultado = await sesion.execute(
-        text(
-            """
-            UPDATE anuncios
-               SET titulo = :titulo, mensaje = :mensaje, enlace = :enlace,
-                   tipo = :tipo, activo = :activo, inicio = :inicio, fin = :fin
-             WHERE id = :id
-            """
-        ),
-        {
-            "id": anuncio_id,
-            "titulo": datos.titulo,
-            "mensaje": datos.mensaje,
-            "enlace": datos.enlace,
-            "tipo": datos.tipo,
-            "activo": int(datos.activo),
-            "inicio": datos.inicio,
-            "fin": datos.fin,
-        },
+async def editar_anuncio(
+    anuncio_id: int,
+    titulo: str = Form(),
+    mensaje: str = Form(default=""),
+    enlace: str = Form(default=""),
+    texto_boton: str = Form(default=""),
+    tipo: str = Form(default="modal"),
+    formato: str = Form(default="texto"),
+    activo: str = Form(default="true"),
+    inicio: str = Form(),
+    fin: str = Form(),
+    imagen: UploadFile | None = File(default=None),
+    sesion: AsyncSession = Depends(obtener_sesion),
+):
+    datos = _anuncio_modelo(
+        titulo=titulo,
+        mensaje=mensaje,
+        enlace=enlace,
+        texto_boton=texto_boton,
+        tipo=tipo,
+        formato=formato,
+        activo=activo,
+        inicio=inicio,
+        fin=fin,
     )
-    if resultado.rowcount == 0:
-        await sesion.rollback()
-        raise HTTPException(status_code=404, detail="Anuncio no encontrado")
-    await sesion.commit()
-    return {"id": anuncio_id}
+    return await _persistir_anuncio(sesion, datos, imagen, anuncio_id)
 
 
 @router.delete("/anuncios/{anuncio_id}", status_code=204)

@@ -85,6 +85,7 @@ h3 { font-size: 1.15rem; }
   background: #f8f1e3; color: var(--marino); padding: 0.7rem 5vw;
   border-bottom: 3px solid var(--oro);
 }
+.banda img { width: 72px; height: 48px; object-fit: cover; border-radius: 4px; flex: none; }
 .banda p { margin: 0; }
 .banda a { color: var(--verde); font-weight: 700; }
 .banda button {
@@ -369,6 +370,21 @@ tfoot th { font-size: 1.15rem; }
 }
 .filtros-factura { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: end; margin-bottom: 0.8rem; }
 .filtros-factura label { min-width: 150px; }
+
+.promo-imagen { width: 100%; max-height: 280px; object-fit: cover; border-radius: 4px; display: block; margin: 0.4rem 0 0.8rem; }
+.vista-anuncio { border: 1px dashed var(--linea); box-shadow: none; margin-bottom: 1rem; }
+.mapa-previo { background: linear-gradient(180deg, #2a303a, #1c2433); color: #f6f1e6; border-radius: 16px; padding: 1rem; }
+.mapa-previo .meta { color: #d9d0c3; }
+.puesto-previo {
+  width: 36px; height: 36px; border-radius: 6px; display: grid; place-items: center;
+  font-size: 0.72rem; font-weight: 700; color: white;
+}
+.puesto-previo.ventana { background: #009300; }
+.puesto-previo.pasillo { background: #d54d0f; }
+.opciones { border: 0; margin: 0; padding: 0; display: flex; gap: 1rem; }
+.opciones legend { font-weight: 700; margin-right: 0.4rem; }
+.opciones label { display: flex; align-items: center; gap: 0.4rem; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.opciones input { width: auto; min-height: 0; }
 
 .lista-admin { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.65rem; }
 .lista-admin li { background: #fff; border: 1px solid var(--linea); border-radius: 6px; padding: 0.85rem 0.95rem; display: grid; gap: 0.25rem; }

@@ -171,11 +171,62 @@ class BlogIn(BaseModel):
         return limpio or None
 
 
+class CiudadIn(BaseModel):
+    nombre: str = Field(min_length=2, max_length=120)
+    departamento: str = Field(min_length=2, max_length=120)
+
+    @field_validator("nombre", "departamento")
+    @classmethod
+    def sin_bordes(cls, valor: str) -> str:
+        limpio = valor.strip()
+        if len(limpio) < 2:
+            raise ValueError("El campo es demasiado corto")
+        return limpio
+
+
+class RutaIn(BaseModel):
+    origen_id: int = Field(gt=0)
+    destino_id: int = Field(gt=0)
+    duracion_min: int = Field(gt=0, le=1440)
+    precio_base: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+
+    @model_validator(mode="after")
+    def distintas(self):
+        if self.origen_id == self.destino_id:
+            raise ValueError("El origen y el destino deben ser distintos")
+        return self
+
+
+class BusIn(BaseModel):
+    placa: str = Field(min_length=4, max_length=10)
+    numero_disco: str = Field(min_length=1, max_length=10)
+    pisos: int = Field(ge=1, le=2)
+    filas: int = Field(ge=1, le=20)
+    estado: Literal["operativo", "mantenimiento", "inactivo"] = "operativo"
+
+    @field_validator("placa", "numero_disco")
+    @classmethod
+    def sin_bordes(cls, valor: str) -> str:
+        return valor.strip().upper()
+
+    @model_validator(mode="after")
+    def cupo(self):
+        if self.pisos * self.filas * 4 > 100:
+            raise ValueError("El bus no puede tener más de 100 asientos")
+        return self
+
+
+class BusEstadoIn(BaseModel):
+    estado: Literal["operativo", "mantenimiento", "inactivo"]
+
+
 class AnuncioIn(BaseModel):
     titulo: str = Field(min_length=3, max_length=140)
-    mensaje: str = Field(min_length=8, max_length=500)
+    mensaje: str = Field(default="", max_length=500)
     enlace: str | None = Field(default=None, max_length=255)
-    tipo: Literal["banner", "modal"] = "banner"
+    texto_boton: str | None = Field(default=None, max_length=80)
+    tipo: Literal["banner", "modal"] = "modal"
+    formato: Literal["texto", "imagen"] = "texto"
     activo: bool = True
     inicio: date
     fin: date
@@ -183,15 +234,30 @@ class AnuncioIn(BaseModel):
     @field_validator("titulo", "mensaje")
     @classmethod
     def sin_bordes(cls, valor: str) -> str:
-        return valor.strip()
+        return (valor or "").strip()
 
-    @field_validator("enlace")
+    @field_validator("enlace", "texto_boton", mode="before")
     @classmethod
-    def enlace_limpio(cls, valor: str | None) -> str | None:
+    def opcional(cls, valor):
         if valor is None:
             return None
-        limpio = valor.strip()
+        limpio = str(valor).strip()
         return limpio or None
+
+    @field_validator("activo", mode="before")
+    @classmethod
+    def a_bool(cls, valor):
+        if isinstance(valor, bool):
+            return valor
+        return str(valor).strip().lower() in {"1", "true", "on", "si", "sí"}
+
+    @model_validator(mode="after")
+    def reglas(self):
+        if self.fin < self.inicio:
+            raise ValueError("La fecha final no puede ser anterior al inicio")
+        if self.formato == "texto" and len(self.mensaje) < 8:
+            raise ValueError("El mensaje debe tener al menos 8 caracteres")
+        return self
 
 
 class ViajeIn(BaseModel):

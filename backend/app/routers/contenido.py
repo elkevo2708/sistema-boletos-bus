@@ -63,7 +63,7 @@ async def anuncios_vigentes(sesion: AsyncSession = Depends(obtener_sesion)):
         await sesion.execute(
             text(
                 """
-                SELECT id, titulo, mensaje, enlace, tipo, inicio, fin
+                SELECT id, titulo, mensaje, enlace, texto_boton, formato, imagen, tipo, inicio, fin
                   FROM anuncios
                  WHERE activo = 1
                    AND inicio <= CURDATE()
@@ -73,7 +73,7 @@ async def anuncios_vigentes(sesion: AsyncSession = Depends(obtener_sesion)):
             )
         )
     ).mappings().all()
-    return [fila_a_dict(fila) for fila in filas]
+    return [_con_medios(fila_a_dict(fila)) for fila in filas]
 
 
 @router.get("/galeria")
