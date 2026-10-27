@@ -38,7 +38,7 @@ export function incrustarVideo(enlace) {
 }
 
 export function MedioHero({ slide }) {
-  if (!slide) return <img src="/bus-lamana.jpg" alt="" />;
+  if (!slide) return <img src="/bus-lamana.jpg" alt="" decoding="async" />;
   if (slide.tipo === 'video' && slide.incrustado) {
     return (
       <iframe
@@ -63,7 +63,7 @@ export function MedioHero({ slide }) {
       </video>
     );
   }
-  return <img src={slide.url || '/bus-lamana.jpg'} alt="" />;
+  return <img src={slide.url || '/bus-lamana.jpg'} alt="" decoding="async" fetchPriority="high" />;
 }
 
 export default function HeroPortada({ children, ambito = 'portal' }) {

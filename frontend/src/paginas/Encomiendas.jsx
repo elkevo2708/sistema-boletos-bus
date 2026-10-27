@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { EncabezadoPagina } from '../ui/ui';
 
 const CIUDADES = [
   'La Maná',
@@ -15,9 +16,9 @@ const CIUDADES = [
 
 export default function Encomiendas() {
   return (
+    <>
+      <EncabezadoPagina kicker="Transporte" titulo="Paquetes en la misma unidad del pasaje." imagen="/encomiendas-lamana.png" />
     <div className="pagina">
-      <p className="sobrelinea">Encomiendas</p>
-      <h1>Paquetes en la misma unidad del pasaje.</h1>
       <p className="lead">
         La cooperativa recibe y entrega encomiendas entre la costa y la sierra.
         El afiche de la oficina tiene el mapa y los teléfonos de cada punto.
@@ -44,5 +45,6 @@ export default function Encomiendas() {
         </div>
       </div>
     </div>
+    </>
   );
 }

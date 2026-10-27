@@ -27,7 +27,7 @@ export default function Layout() {
   }
 
   return (
-    <>
+    <div className="tema-transporte">
       <a className="saltar" href="#contenido">Saltar al contenido</a>
       <div className="cabecera-fija">
         <div className="barra-util">
@@ -125,6 +125,6 @@ export default function Layout() {
           <path fill="#fff" d="M12 3a8.7 8.7 0 0 0-7.5 13.1L3.5 20.5l4.5-1.2A8.7 8.7 0 1 0 12 3zm4.8 12.3c-.2.6-1.2 1.1-1.6 1.1-.4.1-.9.2-2.9-.6-2.4-1-4-3.5-4.1-3.7-.1-.2-1-1.3-1-2.5s.6-1.8.9-2c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5.2.6.7 2 .8 2.1.1.2.1.3 0 .5-.1.2-.2.3-.3.5l-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.4.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.6.8 1.9.9.3.2.4.2.5.3.1.2 0 .8-.2 1.4z" />
         </svg>
       </a>
-    </>
+    </div>
   );
 }

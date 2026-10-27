@@ -108,18 +108,18 @@ export function PanelFacturas({ token }) {
           <tbody>
             {facturas.length ? facturas.map((factura) => (
               <tr key={factura.id}>
-                <td>
+                <td data-label="Número">
                   {factura.numero}<br />
                   <span className="meta">{formatearFechaHora(factura.fecha_emision)}</span>
                 </td>
-                <td>
+                <td data-label="Comprador">
                   {factura.razon_social_comprador}<br />
                   <span className="meta">{factura.identificacion_comprador}</span>
                 </td>
-                <td>{factura.ruta} · asiento {factura.asiento}</td>
-                <td>{formatearPesos(factura.total)}</td>
-                <td><span className={`estado estado-${factura.estado}`}>{factura.estado}</span></td>
-                <td className="acciones-factura">
+                <td data-label="Pasaje">{factura.ruta} · asiento {factura.asiento}</td>
+                <td data-label="Total">{formatearPesos(factura.total)}</td>
+                <td data-label="Estado"><span className={`estado estado-${factura.estado}`}>{factura.estado}</span></td>
+                <td className="acciones-factura" data-label="Acciones">
                   <button type="button" onClick={() => reenviar(factura)} aria-label={`Reenviar factura ${factura.numero}`}>Reenviar</button>
                   <button type="button" onClick={() => descargar(factura, 'xml')} aria-label={`Descargar XML ${factura.numero}`}>XML</button>
                   <button type="button" onClick={() => descargar(factura, 'ride')} aria-label={`Descargar RIDE ${factura.numero}`}>RIDE</button>

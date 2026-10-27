@@ -42,7 +42,10 @@ export default function Taxi() {
       setDestino({ lat: evento.latlng.lat, lng: evento.latlng.lng, texto: 'Punto elegido en el mapa' });
     });
     mapa.current = m;
-    return undefined;
+    const ajustar = () => m.invalidateSize();
+    window.addEventListener('resize', ajustar);
+    setTimeout(ajustar, 200);
+    return () => window.removeEventListener('resize', ajustar);
   }, []);
 
   useEffect(() => {
@@ -162,6 +165,7 @@ export default function Taxi() {
     <section className="taxi-pagina">
       <div ref={caja} className="taxi-mapa" role="application" aria-label="Mapa de taxis en La Maná" />
       <aside className="taxi-panel">
+        <span className="taxi-asa" aria-hidden="true" />
         <p className="sobrelinea">Taxi · La Maná</p>
         <h1>Pide un taxi</h1>
         {!usuario && (
@@ -217,7 +221,7 @@ export default function Taxi() {
               </button>
             )}
             {!['finalizado', 'cancelado', 'a_bordo'].includes(viaje.estado) && (
-              <button type="button" onClick={() => solicitar(`/taxi/viajes/${viaje.id}/cancelar`, { method: 'POST', token }).then(setViaje)}>Cancelar</button>
+              <button type="button" className="btn btn-fantasma" onClick={() => solicitar(`/taxi/viajes/${viaje.id}/cancelar`, { method: 'POST', token }).then(setViaje)}>Cancelar</button>
             )}
           </article>
         )}

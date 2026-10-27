@@ -62,7 +62,7 @@ export default function Login() {
           Crear cuenta
         </button>
       </div>
-      <form className="panel-form" onSubmit={alEnviar}>
+      <form className="panel-form auth-tarjeta" onSubmit={alEnviar}>
         <h1>{modo === 'ingresar' ? 'Bienvenida de nuevo' : 'Crea tu cuenta'}</h1>
         {modo === 'crear' && (
           <>

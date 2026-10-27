@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
+import MarcaPortal from '../componentes/MarcaPortal';
 import { useAuth } from '../contexto/AuthContext';
+import { Aviso, Boton, EstadoVacio } from '../ui/ui';
 
 export default function Conductor() {
   const { token, usuario } = useAuth();
@@ -60,38 +62,48 @@ export default function Conductor() {
   }
 
   if (!usuario) {
-    return <section className="portal-bloque"><p><Link to="/ingresar?siguiente=/conductor">Ingresa</Link> con la cuenta de conductor.</p></section>;
+    return (
+      <section className="portal-bloque">
+        <p><Link to="/ingresar?siguiente=/conductor">Ingresa</Link> con la cuenta de conductor.</p>
+      </section>
+    );
   }
   if (usuario.rol !== 'conductor') {
-    return <section className="portal-bloque"><p className="aviso">Esta vista es solo para conductores.</p></section>;
+    return <section className="portal-bloque"><Aviso>Esta vista es solo para conductores.</Aviso></section>;
   }
 
   return (
-    <section className="conductor-pagina">
-      <p className="sobrelinea">Conductor</p>
-      <h1>{usuario.nombre}</h1>
-      <p className="meta">{coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : 'Esperando GPS. Si falla, se usa el centro de La Maná.'}</p>
-      <button type="button" className="btn btn-portal btn-grande" onClick={lineaToggle} aria-label={linea ? 'Salir de línea' : 'Ponerme en línea'}>
-        {linea ? 'Salir de línea' : 'Ponerme en línea'}
-      </button>
-      {viaje && (
-        <article className="panel-form">
-          <h2>{viaje.estado.replaceAll('_', ' ')}</h2>
-          <p>Pasajero {viaje.pasajero_nombre}. Destino: {viaje.destino?.texto || 'punto en el mapa'}.</p>
-          <p>Tarifa de ejemplo ${Number(viaje.tarifa_estimada).toFixed(2)}</p>
-          {viaje.estado === 'solicitado' && (
-            <div className="dos">
-              <button type="button" className="btn btn-portal" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/aceptar`)}>Aceptar</button>
-              <button type="button" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/rechazar`)}>Rechazar</button>
-            </div>
-          )}
-          {viaje.estado === 'asignado' && <button type="button" className="btn btn-portal" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'en_camino' })}>Voy en camino</button>}
-          {viaje.estado === 'en_camino' && <button type="button" className="btn btn-portal" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'a_bordo' })}>Pasajero a bordo</button>}
-          {viaje.estado === 'a_bordo' && <button type="button" className="btn btn-portal" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'finalizado' })}>Finalizar viaje</button>}
-        </article>
-      )}
-      {!viaje && <p>No hay una solicitud para ti.</p>}
-      {aviso && <p className="aviso" role="alert">{aviso}</p>}
-    </section>
+    <div className="conductor-marco">
+      <header className="conductor-barra">
+        <MarcaPortal />
+        <Link to="/taxi">Ver el mapa</Link>
+      </header>
+      <section className="conductor-pagina">
+        <p className="sobrelinea">Conductor</p>
+        <h1>{usuario.nombre}</h1>
+        <p className="meta">{coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : 'Esperando GPS. Si falla, se usa el centro de La Maná.'}</p>
+        <Boton tamano="lg" onClick={lineaToggle} aria-label={linea ? 'Salir de línea' : 'Ponerme en línea'}>
+          {linea ? 'Salir de línea' : 'Ponerme en línea'}
+        </Boton>
+        {viaje && (
+          <article className="panel-form">
+            <h2>{viaje.estado.replaceAll('_', ' ')}</h2>
+            <p>Pasajero {viaje.pasajero_nombre}. Destino: {viaje.destino?.texto || 'punto en el mapa'}.</p>
+            <p>Tarifa de ejemplo ${Number(viaje.tarifa_estimada).toFixed(2)}</p>
+            {viaje.estado === 'solicitado' && (
+              <div className="dos">
+                <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/aceptar`)}>Aceptar</Boton>
+                <Boton variante="peligro" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/rechazar`)}>Rechazar</Boton>
+              </div>
+            )}
+            {viaje.estado === 'asignado' && <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'en_camino' })}>Voy en camino</Boton>}
+            {viaje.estado === 'en_camino' && <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'a_bordo' })}>Pasajero a bordo</Boton>}
+            {viaje.estado === 'a_bordo' && <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'finalizado' })}>Finalizar viaje</Boton>}
+          </article>
+        )}
+        {!viaje && <EstadoVacio titulo="Sin solicitudes" texto="Cuando un pasajero te elija, el viaje aparece aquí." />}
+        {aviso && <Aviso tono={aviso.includes('línea') ? 'ok' : 'error'}>{aviso}</Aviso>}
+      </section>
+    </div>
   );
 }

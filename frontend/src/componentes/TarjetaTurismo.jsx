@@ -7,7 +7,7 @@ export default function TarjetaTurismo({ ficha }) {
     <article className="tarjeta-turismo">
       <Link to={`${base}/${ficha.slug}`}>
         {ficha.imagen ? (
-          <img src={ficha.imagen} alt="" />
+          <img src={ficha.imagen} alt="" loading="lazy" decoding="async" />
         ) : (
           <span className="tarjeta-vacia" aria-hidden="true">{ficha.zona || 'La Maná'}</span>
         )}

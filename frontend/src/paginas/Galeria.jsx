@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { solicitar } from '../api';
 import Lightbox from '../componentes/Lightbox';
+import { EncabezadoPagina, EstadoVacio } from '../ui/ui';
 
 const FILTROS = [
   ['', 'Todas'],
@@ -32,9 +33,9 @@ export default function Galeria() {
   }
 
   return (
+    <>
+      <EncabezadoPagina kicker="Transporte" titulo="La cooperativa en el camino." bajada="Buses, destinos y terminales." imagen="/bus-lamana.jpg" />
     <div className="pagina">
-      <p className="sobrelinea">Buses, destinos y terminales</p>
-      <h1>La cooperativa en el camino.</h1>
       <div className="filtros" role="tablist" aria-label="Filtrar galería">
         {FILTROS.map(([valor, etiqueta]) => (
           <button
@@ -60,7 +61,7 @@ export default function Galeria() {
             onClick={() => setAbierta(foto.id)}
             aria-label={`Ampliar ${foto.titulo}`}
           >
-            <img src={foto.url} alt={foto.titulo} />
+            <img src={foto.url} alt={foto.titulo} loading="lazy" decoding="async" />
             <span>{foto.titulo}</span>
           </button>
         ))}
@@ -73,6 +74,8 @@ export default function Galeria() {
           onMover={mover}
         />
       )}
+      {!error && fotos.length === 0 && <EstadoVacio titulo="Sin fotos" texto="No hay imágenes en esta categoría." />}
     </div>
+    </>
   );
 }

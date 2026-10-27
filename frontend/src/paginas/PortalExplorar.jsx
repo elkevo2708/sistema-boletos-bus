@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { solicitar } from '../api';
 import TarjetaTurismo from '../componentes/TarjetaTurismo';
 import { IDIOMAS, MENU_PORTAL } from '../iconosTurismo';
+import { EncabezadoPagina, EstadoVacio } from '../ui/ui';
 
 export default function PortalExplorar() {
   const [params, setParams] = useSearchParams();
@@ -26,10 +27,9 @@ export default function PortalExplorar() {
   }
 
   return (
+    <>
+      <EncabezadoPagina titulo="Buscar" bajada="Fichas del cantón, con el texto que escribió." />
     <section className="portal-bloque">
-      <div className="portal-encabezado">
-        <h1>Buscar</h1>
-      </div>
       <form className="portal-buscar portal-buscar-pagina" onSubmit={enviar}>
         <input value={texto} onChange={(e) => setTexto(e.target.value)} aria-label="Texto de búsqueda" placeholder="Río, cacao, parroquia…" />
         <button type="submit" className="btn btn-portal">Buscar</button>
@@ -43,7 +43,8 @@ export default function PortalExplorar() {
       <div className="rejilla-turismo">
         {fichas.map((ficha) => <TarjetaTurismo key={`${ficha.tipo}-${ficha.id}`} ficha={ficha} />)}
       </div>
-      {!error && fichas.length === 0 && <p>No hay fichas con ese texto.</p>}
+      {!error && fichas.length === 0 && <EstadoVacio titulo="Sin resultados" texto="No hay fichas con ese texto." />}
     </section>
+    </>
   );
 }

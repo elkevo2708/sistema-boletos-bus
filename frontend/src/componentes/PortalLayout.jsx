@@ -45,10 +45,18 @@ export default function PortalLayout() {
     return conteos[item.tipo] || 0;
   }
 
+  const destinoLogin = usuario?.rol === 'conductor'
+    ? '/conductor'
+    : usuario?.rol === 'cliente'
+      ? '/mis-facturas'
+      : usuario
+        ? '/admin'
+        : '/ingresar';
+
   function enlaces(clase) {
     return MENU_PORTAL.map((item) => (
       <NavLink key={item.to} className={clase} to={item.to} end={item.fin} onClick={cerrar}>
-        <item.Icono size={22} aria-hidden="true" />
+        <item.Icono size={22} strokeWidth={1.75} aria-hidden="true" />
         <span>{textos[item.clave]}</span>
         <small>{badge(item)}</small>
       </NavLink>
@@ -88,56 +96,65 @@ export default function PortalLayout() {
           </label>
           <nav className="portal-nav" aria-label="Secciones del portal">
             {enlaces()}
-            <Link className="portal-login" to={usuario?.rol === 'conductor' ? '/conductor' : usuario?.rol === 'cliente' ? '/mis-facturas' : usuario ? '/admin' : '/ingresar'} onClick={cerrar}>
-              <UserRound size={22} aria-hidden="true" />
+            <Link className="portal-login" to={destinoLogin} onClick={cerrar}>
+              <UserRound size={22} strokeWidth={1.75} aria-hidden="true" />
               <span>{usuario ? usuario.nombre : textos.login}</span>
             </Link>
           </nav>
         </div>
         {menu && (
-          <div className="portal-desplegable">
-            <form className="portal-buscar portal-buscar-menu" onSubmit={buscar} role="search">
-              <Search size={18} aria-hidden="true" />
-              <input
-                value={consulta}
-                onChange={(e) => setConsulta(e.target.value)}
-                placeholder={textos.buscar}
-                aria-label={textos.buscar}
-              />
-            </form>
-            <div className="portal-movil-items">{enlaces('portal-item-movil')}</div>
-            {MENU_EXTRA.map((item) => (
-              <Link key={item.to} to={item.to} onClick={cerrar}>
-                <item.Icono size={18} aria-hidden="true" /> {item.label}
+          <>
+            <button type="button" className="drawer-fondo" aria-label="Cerrar menú" onClick={cerrar} />
+            <div className="portal-desplegable abierto">
+              <form className="portal-buscar" onSubmit={buscar} role="search">
+                <Search size={18} aria-hidden="true" />
+                <input
+                  value={consulta}
+                  onChange={(e) => setConsulta(e.target.value)}
+                  placeholder={textos.buscar}
+                  aria-label={textos.buscar}
+                />
+              </form>
+              <div className="portal-movil-items">{enlaces('portal-item-movil')}</div>
+              {MENU_EXTRA.map((item) => (
+                <Link key={item.to} to={item.to} onClick={cerrar}>
+                  <item.Icono size={18} strokeWidth={1.75} aria-hidden="true" /> {item.label}
+                </Link>
+              ))}
+              <Link className="portal-item-movil" to={destinoLogin} onClick={cerrar}>
+                <UserRound size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>{usuario ? usuario.nombre : textos.login}</span>
               </Link>
-            ))}
-          </div>
+            </div>
+          </>
         )}
       </header>
       <main id="contenido">
         <Outlet />
       </main>
       <footer className="portal-pie">
-        <div>
-          <MarcaPortal />
-          <p>Guía del cantón La Maná, en el subtrópico de Cotopaxi. Los textos se editan en el panel.</p>
-        </div>
-        <div>
-          <p className="pie-titulo">Recorrer</p>
-          {MENU_EXTRA.map((item) => (
-            <p key={item.to}><Link to={item.to}>{item.label}</Link></p>
-          ))}
-        </div>
-        <div>
-          <p className="pie-titulo">Servicios</p>
-          <p><Link to="/transporte">Transporte</Link></p>
-          <p><Link to="/taxi">Taxi</Link></p>
-          <p><Link to="/admin">Panel</Link></p>
-        </div>
-        <div>
-          <p className="pie-titulo">Contacto</p>
-          <p><Link to="/contacto">Escribir al portal</Link></p>
-          <p><a href="mailto:turismo@lamana.ec">turismo@lamana.ec</a></p>
+        <div className="contenedor portal-pie-grid">
+          <div>
+            <MarcaPortal />
+            <p>Guía del cantón La Maná, en el subtrópico de Cotopaxi. Los textos se editan en el panel.</p>
+          </div>
+          <div>
+            <p className="pie-titulo">Recorrer</p>
+            {MENU_EXTRA.map((item) => (
+              <p key={item.to}><Link to={item.to}>{item.label}</Link></p>
+            ))}
+          </div>
+          <div>
+            <p className="pie-titulo">Servicios</p>
+            <p><Link to="/transporte">Transporte</Link></p>
+            <p><Link to="/taxi">Taxi</Link></p>
+            <p><Link to="/admin">Panel</Link></p>
+          </div>
+          <div>
+            <p className="pie-titulo">Contacto</p>
+            <p><Link to="/contacto">Escribir al portal</Link></p>
+            <p><a href="mailto:turismo@lamana.ec">turismo@lamana.ec</a></p>
+          </div>
         </div>
       </footer>
       <p className="portal-base">© 2026 La Maná Recorres. El transporte conserva su propia marca.</p>

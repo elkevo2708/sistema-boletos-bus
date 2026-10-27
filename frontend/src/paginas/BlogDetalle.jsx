@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { solicitar } from '../api';
 import { formatearFechaHora } from '../formato';
+import { Esqueleto } from '../ui/ui';
 
 export default function BlogDetalle() {
   const { slug } = useParams();
@@ -14,7 +15,7 @@ export default function BlogDetalle() {
   }, [slug]);
 
   if (error) return <p className="pagina aviso" role="alert">{error}</p>;
-  if (!nota) return <p className="pagina">Cargando la nota…</p>;
+  if (!nota) return <div className="pagina"><Esqueleto lineas={4} /></div>;
 
   return (
     <article className="pagina estrecha-larga">
@@ -22,7 +23,7 @@ export default function BlogDetalle() {
       <p className="sobrelinea">{formatearFechaHora(nota.publicado_en)}</p>
       <h1>{nota.titulo}</h1>
       <p className="lead">{nota.resumen}</p>
-      {nota.imagen && <img className="portada" src={nota.imagen} alt="" />}
+      {nota.imagen && <img className="portada" src={nota.imagen} alt="" loading="lazy" decoding="async" />}
       {nota.cuerpo.split(/\n\n+/).map((parrafo) => <p key={parrafo.slice(0, 24)}>{parrafo}</p>)}
     </article>
   );

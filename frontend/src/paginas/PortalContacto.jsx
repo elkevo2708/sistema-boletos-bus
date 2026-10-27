@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { solicitar } from '../api';
+import { Aviso, EncabezadoPagina } from '../ui/ui';
 
 const VACIO = { nombre: '', email: '', mensaje: '' };
 
@@ -30,11 +31,11 @@ export default function PortalContacto() {
   }
 
   return (
+    <>
+      <EncabezadoPagina titulo="Contacto" bajada="Este buzón es del portal de turismo. No confirma una reserva de finca ni un pasaje." />
     <section className="portal-bloque portal-contacto">
       <div>
-        <p className="sobrelinea">La Maná</p>
-        <h1>Contacto</h1>
-        <p>Este buzón es del portal de turismo. No confirma una reserva de finca ni un pasaje. Los pasajes se compran en Transporte.</p>
+        <p>Los pasajes se compran en Transporte.</p>
         <p><a href="mailto:turismo@lamana.ec">turismo@lamana.ec</a></p>
       </div>
       <form className="panel-form" noValidate onSubmit={enviar}>
@@ -51,12 +52,13 @@ export default function PortalContacto() {
           Mensaje
           <textarea value={datos.mensaje} onChange={(e) => setDatos({ ...datos, mensaje: e.target.value })} aria-label="Mensaje" rows={5} />
         </label>
-        {error && <p className="aviso" role="alert">{error}</p>}
-        {aviso && <p className="aviso-ok" role="status">{aviso}</p>}
+        {error && <Aviso>{error}</Aviso>}
+        {aviso && <Aviso tono="ok">{aviso}</Aviso>}
         <button type="submit" className="btn btn-portal" disabled={ocupado} aria-label="Enviar mensaje">
           {ocupado ? 'Enviando…' : 'Enviar mensaje'}
         </button>
       </form>
     </section>
+    </>
   );
 }

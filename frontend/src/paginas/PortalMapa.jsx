@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
 import { RUTA_TIPO } from '../iconosTurismo';
+import { EncabezadoPagina, EstadoVacio } from '../ui/ui';
 
 export default function PortalMapa() {
   const [puntos, setPuntos] = useState([]);
@@ -12,12 +13,9 @@ export default function PortalMapa() {
 
   const marco = '-79.55,-1.20,-78.95,-0.70';
   return (
+    <>
+      <EncabezadoPagina titulo="Mapa" bajada="El recuadro usa OpenStreetMap. El punto es una referencia de la cabecera, no un levantamiento." />
     <section className="portal-bloque">
-      <div className="portal-encabezado">
-        <p className="sobrelinea">La Maná</p>
-        <h1>Mapa</h1>
-        <p className="lead">El recuadro usa OpenStreetMap. El punto es una referencia de la cabecera, no un levantamiento.</p>
-      </div>
       <div className="portal-mapa">
         <iframe
           title="Mapa de La Maná en OpenStreetMap"
@@ -30,9 +28,10 @@ export default function PortalMapa() {
               <span>{punto.zona}</span>
             </li>
           ))}
-          {puntos.length === 0 && <li>Todavía no hay coordenadas publicadas.</li>}
+          {puntos.length === 0 && <li><EstadoVacio titulo="Sin coordenadas" texto="Todavía no hay puntos publicados." /></li>}
         </ul>
       </div>
     </section>
+    </>
   );
 }

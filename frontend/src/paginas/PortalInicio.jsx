@@ -4,6 +4,7 @@ import { solicitar } from '../api';
 import HeroPortada from '../componentes/HeroPortada';
 import TarjetaTurismo from '../componentes/TarjetaTurismo';
 import { ICONOS_PRACTICOS, MENU_EXTRA } from '../iconosTurismo';
+import { Seccion } from '../ui/ui';
 
 export default function PortalInicio() {
   const [resumen, setResumen] = useState(null);
@@ -23,20 +24,19 @@ export default function PortalInicio() {
   return (
     <>
       <HeroPortada ambito="portal" />
-      <section className="portal-bloque">
-        <div className="portal-encabezado">
-          <p className="sobrelinea">Cantón La Maná</p>
-          <h2>Qué puedes recorrer</h2>
-        </div>
-        <div className="rejilla-turismo">
-          {(resumen?.destacados || []).map((ficha) => <TarjetaTurismo key={`${ficha.tipo}-${ficha.id}`} ficha={ficha} />)}
-        </div>
-      </section>
+      <Seccion kicker="Cantón La Maná" titulo="Qué puedes recorrer">
+        {resumen ? (
+          <div className="rejilla-turismo">
+            {(resumen.destacados || []).map((ficha) => <TarjetaTurismo key={`${ficha.tipo}-${ficha.id}`} ficha={ficha} />)}
+          </div>
+        ) : (
+          <div className="rejilla-esqueleto" aria-hidden="true">
+            <span className="esqueleto-tarjeta" /><span className="esqueleto-tarjeta" /><span className="esqueleto-tarjeta" />
+          </div>
+        )}
+      </Seccion>
 
-      <section className="portal-bloque portal-claro">
-        <div className="portal-encabezado">
-          <h2>Qué debes saber sobre La Maná</h2>
-        </div>
+      <Seccion titulo="Qué debes saber sobre La Maná" clara>
         <div className="portal-saber">
           <article>
             <h3>Dónde queda</h3>
@@ -59,12 +59,9 @@ export default function PortalInicio() {
             </li>
           ))}
         </ul>
-      </section>
+      </Seccion>
 
-      <section className="portal-bloque">
-        <div className="portal-encabezado">
-          <h2>Para quién es el viaje</h2>
-        </div>
+      <Seccion titulo="Para quién es el viaje">
         <div className="portal-perfiles">
           <article>
             <h3>Quien busca río y sombra</h3>
@@ -79,43 +76,27 @@ export default function PortalInicio() {
             <p>La cabecera sirve de escala entre Latacunga y Quevedo. El pasaje se compra en Transporte, con el asiento ya elegido.</p>
           </article>
         </div>
-      </section>
+      </Seccion>
 
-      <section className="portal-bloque portal-claro">
-        <div className="portal-encabezado">
-          <h2>Parroquias</h2>
-          <Link to="/parroquias">Ver todas</Link>
-        </div>
+      <Seccion titulo="Parroquias" clara accion={<Link to="/parroquias">Ver todas</Link>}>
         <div className="rejilla-turismo">
           {parroquias.map((ficha) => <TarjetaTurismo key={ficha.id} ficha={ficha} />)}
         </div>
-      </section>
+      </Seccion>
 
-      <section className="portal-bloque">
-        <div className="portal-encabezado">
-          <h2>Gastronomía</h2>
-          <Link to="/gastronomia">Ver la mesa</Link>
-        </div>
+      <Seccion titulo="Gastronomía" accion={<Link to="/gastronomia">Ver la mesa</Link>}>
         <div className="rejilla-turismo">
           {comida.map((ficha) => <TarjetaTurismo key={ficha.id} ficha={ficha} />)}
         </div>
-      </section>
+      </Seccion>
 
-      <section className="portal-bloque portal-claro">
-        <div className="portal-encabezado">
-          <h2>Actividades</h2>
-          <Link to="/actividades">Ver el plan</Link>
-        </div>
+      <Seccion titulo="Actividades" clara accion={<Link to="/actividades">Ver el plan</Link>}>
         <div className="rejilla-turismo">
           {actividades.map((ficha) => <TarjetaTurismo key={ficha.id} ficha={ficha} />)}
         </div>
-      </section>
+      </Seccion>
 
-      <section className="portal-bloque">
-        <div className="portal-encabezado">
-          <h2>Agenda</h2>
-          <Link to="/agenda">Ver fechas</Link>
-        </div>
+      <Seccion titulo="Agenda" accion={<Link to="/agenda">Ver fechas</Link>}>
         <ul className="portal-agenda">
           {(resumen?.eventos || []).map((evento) => (
             <li key={evento.id}>
@@ -127,27 +108,20 @@ export default function PortalInicio() {
             </li>
           ))}
         </ul>
-      </section>
+      </Seccion>
 
-      <section className="portal-bloque portal-claro">
-        <div className="portal-encabezado">
-          <h2>Galería</h2>
-          <Link to="/galeria">Abrir</Link>
-        </div>
+      <Seccion titulo="Galería" clara accion={<Link to="/galeria">Abrir</Link>}>
         <div className="tira-fotos">
           {fotos.map((foto) => (
             <figure key={foto.id}>
-              <img src={foto.url} alt={foto.titulo} />
+              <img src={foto.url} alt={foto.titulo} loading="lazy" decoding="async" />
               <figcaption>{foto.titulo}</figcaption>
             </figure>
           ))}
         </div>
-      </section>
+      </Seccion>
 
-      <section className="portal-bloque">
-        <div className="portal-encabezado">
-          <h2>Mapa y contacto</h2>
-        </div>
+      <Seccion titulo="Mapa y contacto">
         <div className="portal-dos">
           <Link className="portal-atajo" to="/mapa">
             <h3>Mapa del cantón</h3>
@@ -164,7 +138,7 @@ export default function PortalInicio() {
           ))}
           <li><Link to="/transporte">Transporte</Link></li>
         </ul>
-      </section>
+      </Seccion>
     </>
   );
 }

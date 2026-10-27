@@ -22,6 +22,7 @@ export default function Admin() {
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [modulo, setModulo] = useState('resumen');
+  const [menu, setMenu] = useState(false);
   const [pestana, setPestana] = useState('operacion');
   const [kpis, setKpis] = useState(null);
 
@@ -239,15 +240,17 @@ export default function Admin() {
 
   return (
     <div className="dashboard">
-      <aside className="dash-lado" aria-label="Módulos del panel">
+      {menu && <button type="button" className="drawer-fondo" aria-label="Cerrar módulos" onClick={() => setMenu(false)} />}
+      <aside className={menu ? 'dash-lado abierto' : 'dash-lado'} aria-label="Módulos del panel">
         <p className="sobrelinea">Panel</p>
         {modulos.map((id) => (
-          <button key={id} type="button" className={modulo === id ? 'activo' : ''} onClick={() => setModulo(id)} aria-label={`Abrir ${etiquetas[id]}`}>
+          <button key={id} type="button" className={modulo === id ? 'activo' : ''} onClick={() => { setModulo(id); setMenu(false); }} aria-label={`Abrir ${etiquetas[id]}`}>
             {etiquetas[id]}
           </button>
         ))}
       </aside>
       <div className="dash-cuerpo">
+      <button type="button" className="btn btn-fantasma dash-abrir" onClick={() => setMenu(true)} aria-label="Abrir módulos del panel">Módulos</button>
       <h1>{etiquetas[modulo]}</h1>
       {modulo === 'resumen' && (
         <div className="kpis" aria-label="Indicadores">
@@ -399,9 +402,9 @@ export default function Admin() {
             <tbody>
               {ventas?.filas.length ? ventas.filas.map((fila) => (
                 <tr key={fila.ruta_id}>
-                  <td>{fila.origen} → {fila.destino}</td>
-                  <td>{fila.boletos_pagados}</td>
-                  <td>{formatearPesos(fila.total)}</td>
+                  <td data-label="Ruta">{fila.origen} → {fila.destino}</td>
+                  <td data-label="Boletos">{fila.boletos_pagados}</td>
+                  <td data-label="Total">{formatearPesos(fila.total)}</td>
                 </tr>
               )) : (
                 <tr>

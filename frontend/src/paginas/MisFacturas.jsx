@@ -57,15 +57,15 @@ export default function MisFacturas() {
           <tbody>
             {facturas.length ? facturas.map((factura) => (
               <tr key={factura.id}>
-                <td>{factura.numero}</td>
-                <td>{formatearFechaHora(factura.fecha_emision)}</td>
-                <td>
+                <td data-label="Número">{factura.numero}</td>
+                <td data-label="Fecha">{formatearFechaHora(factura.fecha_emision)}</td>
+                <td data-label="Pasaje">
                   {factura.ruta}<br />
                   <span className="meta">{formatearFechaHora(factura.salida)} · asiento {factura.asiento} · {factura.pasajero}</span>
                 </td>
-                <td>{formatearPesos(factura.total)}</td>
-                <td><span className={`estado estado-${factura.estado}`}>{factura.estado}</span></td>
-                <td className="acciones-factura">
+                <td data-label="Total">{formatearPesos(factura.total)}</td>
+                <td data-label="Estado"><span className={`estado estado-${factura.estado}`}>{factura.estado}</span></td>
+                <td className="acciones-factura" data-label="Archivos">
                   <button type="button" onClick={() => descargar(factura, 'ride')} aria-label={`Descargar RIDE ${factura.numero}`}>RIDE</button>
                   <button type="button" onClick={() => descargar(factura, 'xml')} aria-label={`Descargar XML ${factura.numero}`}>XML</button>
                 </td>

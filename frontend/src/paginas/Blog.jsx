@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
 import { formatearFechaHora } from '../formato';
+import { EncabezadoPagina, EstadoVacio } from '../ui/ui';
 
 export default function Blog() {
   const [categoria, setCategoria] = useState('');
@@ -14,9 +15,9 @@ export default function Blog() {
   }, [categoria]);
 
   return (
+    <>
+      <EncabezadoPagina kicker="Transporte" titulo="Lo que se mueve en la ruta." bajada="Noticias y destinos de la cooperativa." imagen="/bus-lamana.jpg" />
     <div className="pagina">
-      <p className="sobrelinea">Noticias y destinos</p>
-      <h1>Lo que se mueve en la ruta.</h1>
       <div className="filtros" role="tablist" aria-label="Filtrar publicaciones">
         {[
           ['', 'Todo'],
@@ -40,14 +41,15 @@ export default function Blog() {
       <div className="rejilla-notas">
         {notas.map((nota) => (
           <article className="nota" key={nota.id}>
-            {nota.imagen && <img src={nota.imagen} alt="" />}
+            {nota.imagen && <img src={nota.imagen} alt="" loading="lazy" decoding="async" />}
             <p className="sobrelinea">{nota.categoria} · {formatearFechaHora(nota.publicado_en)}</p>
             <h2><Link to={`/transporte/noticias/${nota.slug}`}>{nota.titulo}</Link></h2>
             <p>{nota.resumen}</p>
           </article>
         ))}
       </div>
-      {!error && notas.length === 0 && <p>No hay publicaciones en esta categoría.</p>}
+      {!error && notas.length === 0 && <EstadoVacio titulo="Sin publicaciones" texto="No hay notas en esta categoría." />}
     </div>
+    </>
   );
 }
