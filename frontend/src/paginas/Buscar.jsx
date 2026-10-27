@@ -12,10 +12,10 @@ const RUTAS = [
 ];
 
 const DESTINOS = [
-  ['Quevedo', 'destino-quevedo.jpg', '/noticias/quevedo-rio-y-mercado', 'Río, mercado y la salida más corta de la cooperativa.'],
-  ['Latacunga', 'destino-latacunga.jpg', '/noticias/latacunga-y-la-sierra', 'Dos horas de subida y el frío claro de la sierra.'],
-  ['Guayaquil', 'destino-guayaquil.jpg', '/galeria', 'Se llega desde Quevedo, el mismo día, en la unidad de la costa.'],
-  ['Quito', 'terminal-quito.jpg', '/noticias/salida-extra-quito-en-feriado', 'Turno de madrugada hasta Quitumbe cuando el feriado lo pide.'],
+  ['Quevedo', 'destino-quevedo.jpg', '/transporte/noticias/quevedo-rio-y-mercado', 'Río, mercado y la salida más corta de la cooperativa.'],
+  ['Latacunga', 'destino-latacunga.jpg', '/transporte/noticias/latacunga-y-la-sierra', 'Dos horas de subida y el frío claro de la sierra.'],
+  ['Guayaquil', 'destino-guayaquil.jpg', '/transporte/galeria', 'Se llega desde Quevedo, el mismo día, en la unidad de la costa.'],
+  ['Quito', 'terminal-quito.jpg', '/transporte/noticias/salida-extra-quito-en-feriado', 'Turno de madrugada hasta Quitumbe cuando el feriado lo pide.'],
 ];
 
 const SERVICIOS = [
@@ -139,7 +139,7 @@ export default function Buscar() {
 
   return (
     <div>
-      <HeroPortada>
+      <HeroPortada ambito="transporte">
         <form id="buscar" className="panel-busqueda" noValidate onSubmit={buscar}>
           <label>
             Origen
@@ -189,7 +189,7 @@ export default function Buscar() {
               Salimos de la matriz en La Maná. Un disco baja a Quevedo y sigue a Guayaquil.
               El otro sube a Latacunga, Santo Domingo, Ambato y Quito. El pasaje se cobra por asiento y el QR es el boleto.
             </p>
-            <Link className="btn btn-arcilla" to="/galeria">Ver la flota</Link>
+            <Link className="btn btn-arcilla" to="/transporte/galeria">Ver la flota</Link>
           </div>
           <img src="/bus-lamana.jpg" alt="Unidad naranja y negra de Trans La Maná" />
         </div>
@@ -205,7 +205,7 @@ export default function Buscar() {
               La cobertura del afiche llega a La Maná, Quevedo, Quinsaloma, Moraspungo,
               Latacunga, Ambato, Quito, Guayaquil, Durán y Empalme.
             </p>
-            <Link className="btn btn-pino" to="/encomiendas">Ver cobertura y teléfonos</Link>
+            <Link className="btn btn-pino" to="/transporte/encomiendas">Ver cobertura y teléfonos</Link>
           </div>
         </div>
       </section>
@@ -234,7 +234,7 @@ export default function Buscar() {
               <p className="sobrelinea">Destinos</p>
               <h2>A dónde sale el disco.</h2>
             </div>
-            <Link to="/noticias">Leer las crónicas</Link>
+            <Link to="/transporte/noticias">Leer las crónicas</Link>
           </div>
           <div className="rejilla-destinos">
             {DESTINOS.map(([ciudad, foto, enlace, texto]) => (
@@ -346,7 +346,7 @@ export default function Buscar() {
                 </p>
                 <Link
                   className="btn btn-arcilla"
-                  to={`/viajes/${viaje.id}`}
+                  to={`/transporte/viajes/${viaje.id}`}
                   aria-label={`Elegir asientos del viaje de ${viaje.origen} a ${viaje.destino} a las ${formatearFechaHora(viaje.salida)}`}
                 >
                   Elegir asiento
@@ -376,7 +376,7 @@ export default function Buscar() {
             <p className="sobrelinea">Flota</p>
             <h2>Unidades de la cooperativa.</h2>
           </div>
-          <Link to="/galeria">Abrir la galería</Link>
+          <Link to="/transporte/galeria">Abrir la galería</Link>
         </div>
         <div className="rejilla-flota">
           <figure>
@@ -462,14 +462,14 @@ function Destacados() {
               <p className="sobrelinea">Noticias</p>
               <h2>De la ruta.</h2>
             </div>
-            <Link to="/noticias">Todas las noticias</Link>
+            <Link to="/transporte/noticias">Todas las noticias</Link>
           </div>
           <div className="rejilla-notas">
             {notas.map((nota) => (
               <article className="nota" key={nota.id}>
                 {nota.imagen && <img src={nota.imagen} alt="" />}
                 <p className="sobrelinea">{nota.categoria}</p>
-                <h3><Link to={`/noticias/${nota.slug}`}>{nota.titulo}</Link></h3>
+                <h3><Link to={`/transporte/noticias/${nota.slug}`}>{nota.titulo}</Link></h3>
                 <p>{nota.resumen}</p>
               </article>
             ))}

@@ -1,6 +1,16 @@
-# Cooperativa de Transporte La Maná
+# La Maná: portal de turismo y boletos
 
-Sistema de venta de boletos de la cooperativa, con sede en La Maná, Cotopaxi. La interfaz, la API y la base de datos están en español. Los precios se muestran en dólares de los Estados Unidos. Un asiento de un viaje solo puede estar ocupado por un boleto activo: la garantía es un índice único sobre la columna generada `ocupa_asiento`.
+El sitio público es el portal de turismo del cantón La Maná (Cotopaxi). La venta de boletos de la Cooperativa de Transporte La Maná sigue completa en `/transporte`. La interfaz, la API y la base de datos están en español. Los precios se muestran en dólares de los Estados Unidos. Un asiento de un viaje solo puede estar ocupado por un boleto activo: la garantía es un índice único sobre la columna generada `ocupa_asiento`.
+
+## Portal de turismo
+
+La portada, el menú de iconos, las tarjetas y el pie siguen la estructura de una guía territorial (ver `docs/turismo-referencia.md`). El logo, los textos y las fotos son propios o de licencia libre (`docs/creditos-imagenes.md`). La paleta del portal es verde, blanco y amarillo. Transporte conserva el verde y el naranja de la cooperativa.
+
+Al arrancar, el backend aplica `database/migracion_turismo.sql` (copia en `backend/app/sql/`). Crea categorías, fichas, eventos, galería y mensajes si no existen, y no borra boletos. La portada gana la columna `ambito`: `portal` en el inicio y `transporte` en la cooperativa. En taquilla, la pestaña **Turismo** crea y borra categorías, fichas, agenda, fotos y lee los mensajes. La pestaña **Portada** elige en qué inicio se ve cada diapositiva.
+
+El frontend usa `lucide-react` (licencia ISC) para los iconos del menú. Hay que reconstruir la imagen del frontend después de `git pull`.
+
+Páginas: `/` inicio, `/aprende`, `/atractivos`, `/parroquias`, `/gastronomia`, `/hospedaje`, `/actividades`, `/rutas`, `/agenda`, `/galeria`, `/mapa`, `/contacto`, `/explorar`. Los pasajes quedan en `/transporte` y sus subrutas. `/viajes/:id`, `/noticias` y `/encomiendas` redirigen al apartado de transporte.
 
 ## Cómo ejecutarlo
 
@@ -35,13 +45,13 @@ La contraseña se guarda con bcrypt. El cliente se registra desde **Ingresar →
 
 ## Recorrido
 
-1. En el inicio, elige origen, destino y fecha. La fecha usa la hora de Ecuador (`America/Guayaquil`). Hay dos salidas al día, ida y vuelta, entre todas las ciudades de la semilla, durante los próximos 30 días. Si ese día no hay cupo, la página dice «No hay salidas para esa fecha» y propone los siguientes días y el regreso.
+1. En **Transporte** (`/transporte`), elige origen, destino y fecha. La fecha usa la hora de Ecuador (`America/Guayaquil`). Hay dos salidas al día, ida y vuelta, entre todas las ciudades de la semilla, durante los próximos 30 días. Si ese día no hay cupo, la página dice «No hay salidas para esa fecha» y propone los siguientes días y el regreso.
 2. La franja y la ventana de promoción salen de los anuncios vigentes. En taquilla cada anuncio es de texto o de imagen, con fechas y un interruptor de activo. La ventana se cierra y queda oculta en esa pestaña del navegador. En taquilla no se muestra, para no tapar los formularios.
 3. **Noticias** lista las publicaciones y abre cada nota. **Galería** muestra la unidad real, destinos y terminales; al pulsar una foto se abre el visor. **Encomiendas** muestra la cobertura (La Maná, Quevedo, Quinsaloma, Moraspungo, Latacunga, Ambato, Quito, Guayaquil, Durán y Empalme) y los teléfonos: matriz 099 412 7992, Quevedo 098 040 5468, Guayaquil 099 117 5522, Durán 099 117 2085.
 4. En el mapa, verde es libre, azul es el asiento elegido, gris es ocupado y el rayado es bloqueado. El mapa se actualiza en vivo por `/ws/viajes/{id}`.
 5. Reserva (10 minutos) y elige DeUna!, tarjeta o PayPhone. Sin credenciales el cobro queda en modo de prueba. El número de tarjeta no sale del navegador. Al escribir una cédula o un RUC válido se completan los nombres. El backend marca el boleto como pagado, emite la factura y devuelve el QR en PNG junto con el RIDE.
 6. **Mis facturas** lista los comprobantes de la cuenta y permite descargar el XML y el RIDE.
-7. En **Taquilla**, la cuenta administradora crea ciudades, rutas y buses (con la disposición de asientos), programa y cancela viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día, filtra facturas por DeUna, tarjeta o PayPhone, activa o desactiva cada forma de pago, edita la portada, reenvía el RIDE, descarga XML y RIDE, edita el emisor y administra noticias, anuncios e imágenes. Si un dato falta, el formulario lo dice en la página y no se queda callado.
+7. En **Taquilla**, la cuenta administradora crea ciudades, rutas y buses (con la disposición de asientos), programa y cancela viajes, cambia la tarifa (queda una fila en `auditoria`), consulta las ventas del día, filtra facturas por DeUna, tarjeta o PayPhone, activa o desactiva cada forma de pago, edita la portada, reenvía el RIDE, descarga XML y RIDE, edita el emisor y administra noticias, anuncios e imágenes. La pestaña **Turismo** administra categorías, fichas, agenda, galería y los mensajes de contacto. Si un dato falta, el formulario lo dice en la página y no se queda callado.
 
 ## Pagos
 
@@ -67,7 +77,7 @@ PayPhone: `POST /api/button/Prepare` (montos en centavos, `clientTransactionId`,
 
 ## Portada
 
-En taquilla, **Portada** crea diapositivas de imagen o de video (MP4, WebM, YouTube o Vimeo), con título, subtítulo, botón, orden y un interruptor de activo. La vista previa usa los mismos datos. En el inicio el video se reproduce solo, sin sonido y en bucle; si no puede, queda la foto de respaldo. La foto del bus es la diapositiva inicial. La tarjeta de búsqueda queda encima.
+En taquilla, **Portada** crea diapositivas de imagen o de video (MP4, WebM, YouTube o Vimeo), con título, subtítulo, botón, orden, ámbito (`portal` o `transporte`) y un interruptor de activo. La vista previa usa los mismos datos. En el inicio el video se reproduce solo, sin sonido y en bucle; si no puede, queda la foto de respaldo. El inicio del portal muestra las diapositivas de ámbito `portal`. Transporte conserva la foto del bus y la tarjeta de búsqueda queda encima.
 
 ## Consulta de cédula
 

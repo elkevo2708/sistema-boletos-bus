@@ -54,6 +54,7 @@ def publicar(fila: dict, completo: bool = False) -> dict:
         "texto_boton": fila.get("texto_boton") or "",
         "enlace_boton": fila.get("enlace_boton") or "",
         "orden": fila["orden"],
+        "ambito": fila.get("ambito") or "portal",
     }
     if completo:
         datos.update(
@@ -90,12 +91,16 @@ async def _leer_archivo(archivo: UploadFile, videos: bool) -> str:
 
 
 @router.get("/portada")
-async def publica(sesion: AsyncSession = Depends(obtener_sesion)):
-    filas = (
-        await sesion.execute(
-            text("SELECT * FROM portada WHERE activo = 1 ORDER BY orden, id")
-        )
-    ).mappings().all()
+async def publica(ambito: str | None = None, sesion: AsyncSession = Depends(obtener_sesion)):
+    if ambito is not None and ambito not in ("portal", "transporte"):
+        raise HTTPException(status_code=422, detail="El ámbito es portal o transporte")
+    sql = "SELECT * FROM portada WHERE activo = 1"
+    parametros: dict = {}
+    if ambito:
+        sql += " AND ambito = :ambito"
+        parametros["ambito"] = ambito
+    sql += " ORDER BY orden, id"
+    filas = (await sesion.execute(text(sql), parametros)).mappings().all()
     return [publicar(dict(fila)) for fila in filas]
 
 
@@ -116,12 +121,13 @@ async def crear(
     enlace: str = Form(default=""),
     orden: int = Form(default=0),
     activo: str = Form(default="1"),
+    ambito: str = Form(default="portal"),
     archivo: UploadFile | None = File(default=None),
     poster: UploadFile | None = File(default=None),
     _: dict = Depends(exigir_admin),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
-    datos = _validar(tipo, origen, titulo, subtitulo, texto_boton, enlace_boton, enlace, orden, activo)
+    datos = _validar(tipo, origen, titulo, subtitulo, texto_boton, enlace_boton, enlace, orden, activo, ambito)
     nombre = None
     nombre_poster = None
     if datos["origen"] == "archivo":
@@ -139,9 +145,9 @@ async def crear(
             text(
                 """
                 INSERT INTO portada
-                  (tipo, origen, archivo, enlace, poster, titulo, subtitulo, texto_boton, enlace_boton, orden, activo)
+                  (tipo, origen, archivo, enlace, poster, titulo, subtitulo, texto_boton, enlace_boton, orden, activo, ambito)
                 VALUES
-                  (:tipo, :origen, :archivo, :enlace, :poster, :titulo, :subtitulo, :texto_boton, :enlace_boton, :orden, :activo)
+                  (:tipo, :origen, :archivo, :enlace, :poster, :titulo, :subtitulo, :texto_boton, :enlace_boton, :orden, :activo, :ambito)
                 """
             ),
             {**datos, "archivo": nombre, "poster": nombre_poster},
@@ -174,7 +180,8 @@ async def actualizar(
                    enlace_boton = :enlace_boton,
                    enlace = COALESCE(:enlace, enlace),
                    orden = :orden,
-                   activo = :activo
+                   activo = :activo,
+                   ambito = COALESCE(:ambito, ambito)
              WHERE id = :id
             """
         ),
@@ -187,6 +194,7 @@ async def actualizar(
             "enlace": (datos.enlace or "").strip() or None,
             "orden": datos.orden,
             "activo": 1 if datos.activo else 0,
+            "ambito": datos.ambito,
         },
     )
     await sesion.commit()
@@ -206,7 +214,7 @@ async def eliminar(
     await sesion.commit()
 
 
-def _validar(tipo, origen, titulo, subtitulo, texto_boton, enlace_boton, enlace, orden, activo) -> dict:
+def _validar(tipo, origen, titulo, subtitulo, texto_boton, enlace_boton, enlace, orden, activo, ambito="portal") -> dict:
     if tipo not in ("imagen", "video"):
         raise HTTPException(status_code=422, detail="El tipo es imagen o video")
     if origen not in ("archivo", "enlace"):
@@ -219,6 +227,8 @@ def _validar(tipo, origen, titulo, subtitulo, texto_boton, enlace_boton, enlace,
         raise HTTPException(status_code=422, detail="Falta el enlace de la imagen o del video")
     if tipo == "video" and origen == "enlace" and not (incrustar(enlace) or enlace.lower().endswith((".mp4", ".webm"))):
         raise HTTPException(status_code=422, detail="Use un enlace de YouTube, Vimeo, MP4 o WebM")
+    if ambito not in ("portal", "transporte"):
+        raise HTTPException(status_code=422, detail="El ámbito es portal o transporte")
     return {
         "tipo": tipo,
         "origen": origen,
@@ -229,4 +239,5 @@ def _validar(tipo, origen, titulo, subtitulo, texto_boton, enlace_boton, enlace,
         "enlace": enlace or None,
         "orden": orden,
         "activo": 1 if str(activo).lower() in {"1", "true", "si", "sí"} else 0,
+        "ambito": ambito,
     }

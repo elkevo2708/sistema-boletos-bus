@@ -97,7 +97,7 @@ export default function Login() {
         <button type="submit" className="btn btn-arcilla" disabled={ocupado} aria-label={modo === 'ingresar' ? 'Ingresar' : 'Crear cuenta'}>
           {ocupado ? 'Un momento…' : (modo === 'ingresar' ? 'Ingresar' : 'Crear cuenta')}
         </button>
-        <p className="meta"><Link to="/">Volver a las salidas</Link></p>
+        <p className="meta"><Link to="/transporte">Volver a las salidas</Link> · <Link to="/">Portal de turismo</Link></p>
       </form>
     </div>
   );

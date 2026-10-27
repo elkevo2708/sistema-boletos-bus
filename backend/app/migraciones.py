@@ -7,6 +7,7 @@ from sqlalchemy import text
 from app.database import engine
 
 SQL_PAGOS = Path(__file__).parent / "sql" / "migracion_pagos_portada.sql"
+SQL_TURISMO = Path(__file__).parent / "sql" / "migracion_turismo.sql"
 
 
 async def _ejecutar(sql: str) -> None:
@@ -28,15 +29,74 @@ async def asegurar_esquema() -> None:
         await _ejecutar("ALTER TABLE anuncios ADD COLUMN imagen VARCHAR(255) NULL AFTER formato")
     await _ejecutar("ALTER TABLE anuncios MODIFY mensaje VARCHAR(500) NULL")
     await _aplicar_archivo(SQL_PAGOS)
+    await _ambito_portada()
+    await _aplicar_archivo(SQL_TURISMO)
 
 
 def _sentencias(contenido: str) -> list[str]:
+    """Parte el archivo por `;` fuera de textos. Un punto y coma dentro de una ficha no corta la sentencia."""
     lineas = []
     for linea in contenido.splitlines():
         if linea.strip().startswith("--"):
             continue
         lineas.append(linea)
-    return [parte.strip() for parte in "\n".join(lineas).split(";") if parte.strip()]
+    texto = "\n".join(lineas)
+    partes: list[str] = []
+    actual: list[str] = []
+    en_texto = False
+    indice = 0
+    while indice < len(texto):
+        caracter = texto[indice]
+        if en_texto:
+            actual.append(caracter)
+            if caracter == "\\" and indice + 1 < len(texto):
+                actual.append(texto[indice + 1])
+                indice += 2
+                continue
+            if caracter == "'":
+                if indice + 1 < len(texto) and texto[indice + 1] == "'":
+                    actual.append("'")
+                    indice += 2
+                    continue
+                en_texto = False
+            indice += 1
+            continue
+        if caracter == "'":
+            en_texto = True
+            actual.append(caracter)
+            indice += 1
+            continue
+        if caracter == ";":
+            sentencia = "".join(actual).strip()
+            if sentencia:
+                partes.append(sentencia)
+            actual = []
+            indice += 1
+            continue
+        actual.append(caracter)
+        indice += 1
+    resto = "".join(actual).strip()
+    if resto:
+        partes.append(resto)
+    return partes
+
+
+async def _ambito_portada() -> None:
+    async with engine.connect() as conexion:
+        columnas = (await conexion.execute(text("SHOW COLUMNS FROM portada"))).all()
+    if "ambito" not in {fila[0] for fila in columnas}:
+        await _ejecutar(
+            "ALTER TABLE portada ADD COLUMN ambito ENUM('portal', 'transporte') NOT NULL DEFAULT 'portal' AFTER activo"
+        )
+    await _ejecutar(
+        """
+        UPDATE portada
+           SET ambito = 'transporte'
+         WHERE enlace = '/bus-lamana.jpg'
+            OR titulo LIKE '%asiento ya elegido%'
+            OR titulo LIKE '%unidad naranja%'
+        """
+    )
 
 
 async def _aplicar_archivo(ruta: Path) -> None:

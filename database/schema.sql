@@ -200,6 +200,7 @@ CREATE TABLE portada (
   enlace_boton VARCHAR(300) NULL,
   orden INT NOT NULL DEFAULT 0,
   activo TINYINT(1) NOT NULL DEFAULT 1,
+  ambito ENUM('portal', 'transporte') NOT NULL DEFAULT 'portal',
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

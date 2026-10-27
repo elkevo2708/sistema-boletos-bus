@@ -12,6 +12,7 @@ const VACIO = {
   enlace: '/bus-lamana.jpg',
   orden: 1,
   activo: true,
+  ambito: 'portal',
 };
 
 export default function AdminPortada({ token }) {
@@ -92,6 +93,7 @@ export default function AdminPortada({ token }) {
     datos.set('enlace', form.enlace.trim());
     datos.set('orden', String(form.orden || 0));
     datos.set('activo', form.activo ? '1' : '0');
+    datos.set('ambito', form.ambito || 'portal');
     if (archivo) datos.set('archivo', archivo);
     if (poster) datos.set('poster', poster);
     setOcupado(true);
@@ -122,6 +124,7 @@ export default function AdminPortada({ token }) {
           enlace: item.enlace,
           orden: item.orden,
           activo: !item.activo,
+          ambito: item.ambito || 'portal',
         },
       });
       await cargar();
@@ -205,9 +208,16 @@ export default function AdminPortada({ token }) {
           Orden
           <input type="number" value={form.orden} onChange={(e) => cambiar('orden', Number(e.target.value))} aria-label="Orden de la diapositiva" />
         </label>
+        <label>
+          Dónde se ve
+          <select value={form.ambito} onChange={(e) => cambiar('ambito', e.target.value)} aria-label="Ámbito de la diapositiva">
+            <option value="portal">Portada del portal</option>
+            <option value="transporte">Portada de Transporte</option>
+          </select>
+        </label>
         <label className="check">
           <input type="checkbox" checked={form.activo} onChange={(e) => cambiar('activo', e.target.checked)} aria-label="Diapositiva activa" />
-          Activa en el inicio
+          Activa
         </label>
         <button type="submit" className="btn btn-pino" disabled={ocupado} aria-label="Guardar diapositiva">
           {ocupado ? 'Guardando…' : 'Guardar diapositiva'}
@@ -232,7 +242,7 @@ export default function AdminPortada({ token }) {
           {lista.map((item) => (
             <li key={item.id}>
               <strong>{item.titulo}</strong>
-              <span className="meta">{item.tipo} · {item.activo ? 'activa' : 'oculta'} · orden {item.orden}</span>
+              <span className="meta">{item.tipo} · {item.ambito === 'transporte' ? 'Transporte' : 'Portal'} · {item.activo ? 'activa' : 'oculta'} · orden {item.orden}</span>
               <button type="button" onClick={() => alternar(item)} aria-label={`${item.activo ? 'Ocultar' : 'Activar'} ${item.titulo}`}>
                 {item.activo ? 'Ocultar' : 'Activar'}
               </button>

@@ -8,6 +8,7 @@ import { PanelEmisor, PanelFacturas } from './AdminFacturas';
 import PanelFlota from './AdminFlota';
 import AdminPagos from './AdminPagos';
 import AdminPortada from './AdminPortada';
+import AdminTurismo from './AdminTurismo';
 
 export default function Admin() {
   const { usuario, token } = useAuth();
@@ -215,6 +216,7 @@ export default function Admin() {
         {[
           ['operacion', 'Operación'],
           ['portada', 'Portada'],
+          ['turismo', 'Turismo'],
           ['pagos', 'Pagos'],
           ['flota', 'Flota'],
           ['facturas', 'Facturas'],
@@ -232,6 +234,7 @@ export default function Admin() {
       {error && <p className="aviso" role="alert">{error}</p>}
 
       {pestana === 'portada' && <AdminPortada token={token} />}
+      {pestana === 'turismo' && <AdminTurismo token={token} />}
       {pestana === 'pagos' && <AdminPagos token={token} />}
       {pestana === 'flota' && <PanelFlota token={token} onCambio={recargarCatalogo} />}
       {pestana === 'facturas' && <PanelFacturas token={token} />}

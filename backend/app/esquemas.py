@@ -124,6 +124,51 @@ class PortadaIn(BaseModel):
     enlace: str | None = None
     orden: int = 0
     activo: bool = True
+    ambito: Literal["portal", "transporte"] | None = None
+
+
+class TurismoCategoriaIn(BaseModel):
+    tipo: Literal["atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia", "evento"]
+    nombre: str = Field(min_length=3, max_length=120)
+    resumen: str = ""
+    orden: int = 0
+    activo: bool = True
+
+
+class TurismoFichaIn(BaseModel):
+    tipo: Literal["atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia"]
+    categoria_id: int | None = None
+    nombre: str = Field(min_length=3, max_length=160)
+    resumen: str = Field(min_length=3, max_length=400)
+    cuerpo: str = Field(min_length=3, max_length=8000)
+    zona: str = ""
+    direccion: str = ""
+    lat: float | None = None
+    lng: float | None = None
+    imagen: str | None = None
+    credito: str = ""
+    destacado: bool = False
+    orden: int = 0
+    activo: bool = True
+
+
+class TurismoEventoIn(BaseModel):
+    categoria_id: int | None = None
+    titulo: str = Field(min_length=3, max_length=160)
+    resumen: str = Field(min_length=3, max_length=400)
+    cuerpo: str = Field(min_length=3, max_length=8000)
+    inicio: date
+    fin: date | None = None
+    lugar: str = ""
+    imagen: str | None = None
+    credito: str = ""
+    activo: bool = True
+
+
+class TurismoContactoIn(BaseModel):
+    nombre: str = Field(min_length=3, max_length=120)
+    email: EmailStr
+    mensaje: str = Field(min_length=8, max_length=1000)
 
 
 class EmisorIn(BaseModel):

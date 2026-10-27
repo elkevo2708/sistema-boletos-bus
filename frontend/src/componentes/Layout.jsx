@@ -19,7 +19,7 @@ export default function Layout() {
       }
     }
     cerrar();
-    navegar('/');
+    navegar('/transporte');
   }
 
   function cerrarMenu() {
@@ -56,12 +56,13 @@ export default function Layout() {
             <span />
           </button>
           <nav className={menu ? 'nav abierto' : 'nav'} aria-label="Principal">
-            <NavLink to="/" end onClick={cerrarMenu}>Inicio</NavLink>
-            <Link to={{ pathname: '/', hash: 'rutas' }} onClick={cerrarMenu}>Rutas</Link>
-            <Link to={{ pathname: '/', hash: 'destinos' }} onClick={cerrarMenu}>Destinos</Link>
-            <NavLink to="/encomiendas" onClick={cerrarMenu}>Encomiendas</NavLink>
-            <NavLink to="/noticias" onClick={cerrarMenu}>Noticias</NavLink>
-            <NavLink to="/galeria" onClick={cerrarMenu}>Galería</NavLink>
+            <NavLink to="/transporte" end onClick={cerrarMenu}>Inicio</NavLink>
+            <Link to={{ pathname: '/transporte', hash: 'rutas' }} onClick={cerrarMenu}>Rutas</Link>
+            <Link to={{ pathname: '/transporte', hash: 'destinos' }} onClick={cerrarMenu}>Destinos</Link>
+            <NavLink to="/transporte/encomiendas" onClick={cerrarMenu}>Encomiendas</NavLink>
+            <NavLink to="/transporte/noticias" onClick={cerrarMenu}>Noticias</NavLink>
+            <NavLink to="/transporte/galeria" onClick={cerrarMenu}>Galería</NavLink>
+            <NavLink to="/" end onClick={cerrarMenu}>Portal</NavLink>
             <NavLink to="/admin" onClick={cerrarMenu}>Taquilla</NavLink>
             {usuario ? (
               <>
@@ -72,7 +73,7 @@ export default function Layout() {
             ) : (
               <NavLink to="/ingresar" onClick={cerrarMenu}>Ingresar</NavLink>
             )}
-            <Link className="btn btn-arcilla btn-pasaje" to={{ pathname: '/', hash: 'buscar' }} onClick={cerrarMenu}>
+            <Link className="btn btn-arcilla btn-pasaje" to={{ pathname: '/transporte', hash: 'buscar' }} onClick={cerrarMenu}>
               Pasaje en línea
             </Link>
           </nav>
@@ -89,19 +90,20 @@ export default function Layout() {
         </div>
         <div>
           <p className="pie-titulo">Enlaces</p>
-          <p><Link to="/">Inicio</Link></p>
-          <p><Link to="/encomiendas">Encomiendas</Link></p>
-          <p><Link to="/noticias">Noticias</Link></p>
-          <p><Link to="/galeria">Galería</Link></p>
+          <p><Link to="/transporte">Inicio</Link></p>
+          <p><Link to="/">Portal de turismo</Link></p>
+          <p><Link to="/transporte/encomiendas">Encomiendas</Link></p>
+          <p><Link to="/transporte/noticias">Noticias</Link></p>
+          <p><Link to="/transporte/galeria">Galería</Link></p>
           <p><Link to="/admin">Taquilla</Link></p>
           <p><Link to="/mis-facturas">Mis facturas</Link></p>
         </div>
         <div>
           <p className="pie-titulo">Rutas</p>
-          <p><Link to={{ pathname: '/', hash: 'rutas' }}>La Maná – Quevedo</Link></p>
-          <p><Link to={{ pathname: '/', hash: 'rutas' }}>La Maná – Latacunga</Link></p>
-          <p><Link to={{ pathname: '/', hash: 'rutas' }}>Quevedo – Guayaquil</Link></p>
-          <p><Link to={{ pathname: '/', hash: 'rutas' }}>Latacunga – Quito</Link></p>
+          <p><Link to={{ pathname: '/transporte', hash: 'rutas' }}>La Maná – Quevedo</Link></p>
+          <p><Link to={{ pathname: '/transporte', hash: 'rutas' }}>La Maná – Latacunga</Link></p>
+          <p><Link to={{ pathname: '/transporte', hash: 'rutas' }}>Quevedo – Guayaquil</Link></p>
+          <p><Link to={{ pathname: '/transporte', hash: 'rutas' }}>Latacunga – Quito</Link></p>
         </div>
         <div>
           <p className="pie-titulo">Teléfonos</p>

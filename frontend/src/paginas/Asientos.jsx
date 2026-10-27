@@ -182,7 +182,7 @@ export default function Asientos() {
   async function reservar(event) {
     event.preventDefault();
     if (!token) {
-      navegar(`/ingresar?siguiente=/viajes/${id}`);
+      navegar(`/ingresar?siguiente=/transporte/viajes/${id}`);
       return;
     }
     if (!seleccionado) return;
@@ -209,7 +209,7 @@ export default function Asientos() {
       )));
     } catch (err) {
       setError(err.message);
-      if (err.status === 401) navegar(`/ingresar?siguiente=/viajes/${id}`);
+      if (err.status === 401) navegar(`/ingresar?siguiente=/transporte/viajes/${id}`);
     } finally {
       setOcupado(false);
     }
@@ -310,7 +310,7 @@ export default function Asientos() {
 
   return (
     <div className="pagina">
-      <p className="miga"><Link to="/">Salidas</Link> / {viaje.origen} → {viaje.destino}</p>
+      <p className="miga"><Link to="/transporte">Salidas</Link> / {viaje.origen} → {viaje.destino}</p>
       <header className="cabecera-viaje">
         <div>
           <h1>{viaje.origen} → {viaje.destino}</h1>
@@ -513,7 +513,7 @@ export default function Asientos() {
               {error && <p className="aviso" role="alert">{error}</p>}
               {aviso && <p className="aviso-ok" role="status">{aviso}</p>}
               {!usuario && !reserva && (
-                <p className="aviso-ok">Para reservar necesitas <Link to={`/ingresar?siguiente=/viajes/${id}`}>ingresar</Link>.</p>
+                <p className="aviso-ok">Para reservar necesitas <Link to={`/ingresar?siguiente=/transporte/viajes/${id}`}>ingresar</Link>.</p>
               )}
               {reserva ? (
                 <div className="acciones">

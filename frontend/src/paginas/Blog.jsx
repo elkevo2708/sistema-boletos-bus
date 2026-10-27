@@ -42,7 +42,7 @@ export default function Blog() {
           <article className="nota" key={nota.id}>
             {nota.imagen && <img src={nota.imagen} alt="" />}
             <p className="sobrelinea">{nota.categoria} · {formatearFechaHora(nota.publicado_en)}</p>
-            <h2><Link to={`/noticias/${nota.slug}`}>{nota.titulo}</Link></h2>
+            <h2><Link to={`/transporte/noticias/${nota.slug}`}>{nota.titulo}</Link></h2>
             <p>{nota.resumen}</p>
           </article>
         ))}

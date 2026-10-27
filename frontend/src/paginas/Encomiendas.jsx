@@ -40,7 +40,7 @@ export default function Encomiendas() {
             <a href="tel:+593991172085">Durán · 099 117 2085</a>
           </p>
           <p className="meta">La matriz está en La Maná, Cotopaxi. Horario de taquilla: 05:00 a 21:00.</p>
-          <Link className="btn btn-pino" to={{ pathname: '/', hash: 'buscar' }}>Comprar un pasaje</Link>
+          <Link className="btn btn-pino" to={{ pathname: '/transporte', hash: 'buscar' }}>Comprar un pasaje</Link>
         </div>
       </div>
     </div>
