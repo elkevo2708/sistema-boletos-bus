@@ -8,7 +8,20 @@ La portada, el menú de iconos, las tarjetas y el pie siguen la estructura de un
 
 Al arrancar, el backend aplica `database/migracion_turismo.sql` (copia en `backend/app/sql/`). Crea categorías, fichas, eventos, galería y mensajes si no existen, y no borra boletos. La portada gana la columna `ambito`: `portal` en el inicio y `transporte` en la cooperativa. En taquilla, la pestaña **Turismo** crea y borra categorías, fichas, agenda, fotos y lee los mensajes. La pestaña **Portada** elige en qué inicio se ve cada diapositiva.
 
-El frontend usa `lucide-react` (licencia ISC) para los iconos del menú. Hay que reconstruir la imagen del frontend después de `git pull`.
+El frontend usa `lucide-react` (licencia ISC) para los iconos del menú y `leaflet` para el mapa de taxis. Hay que reconstruir la imagen del frontend después de `git pull`.
+
+La barra replica el orden de una guía territorial: menú, logo **La Maná Recorres**, buscador, idioma y accesos con contador. Emprendimientos y Directorio salen de fichas marcadas como ejemplo. El panel único está en `/admin`, con sidebar. El administrador ve Resumen, Portal turismo, Transporte y Taxis. `operador_turismo`, `operador_transporte` y `operador_taxi` solo ven su módulo. El taxi vive en `/taxi` y la vista del conductor en `/conductor`.
+
+Al arrancar también se aplica `database/migracion_portal_taxi.sql` (copia en `backend/app/sql/`): roles, fichas de ejemplo, compañías, tarifas de ejemplo y seis conductores ficticios. No borra boletos. El simulador `POST /api/taxi/demo/simular` solo responde si `PAGOS_MODO=sandbox`.
+
+| Cuenta | Correo | Contraseña |
+| --- | --- | --- |
+| Operador de turismo | `operador.turismo@lamana.local` | `Operador123!` |
+| Operador de transporte | `operador.transporte@lamana.local` | `Operador123!` |
+| Operador de taxi | `operador.taxi@lamana.local` | `Operador123!` |
+| Conductor de ejemplo 1 a 6 | `conductor.ejemplo1@lamana.local` … `conductor.ejemplo6@lamana.local` | `Conductor123!` |
+
+Esas tarifas y esos conductores son de demostración, no una tarifa oficial.
 
 Páginas: `/` inicio, `/aprende`, `/atractivos`, `/parroquias`, `/gastronomia`, `/hospedaje`, `/actividades`, `/rutas`, `/agenda`, `/galeria`, `/mapa`, `/contacto`, `/explorar`. Los pasajes quedan en `/transporte` y sus subrutas. `/viajes/:id`, `/noticias` y `/encomiendas` redirigen al apartado de transporte.
 

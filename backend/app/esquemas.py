@@ -128,7 +128,7 @@ class PortadaIn(BaseModel):
 
 
 class TurismoCategoriaIn(BaseModel):
-    tipo: Literal["atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia", "evento"]
+    tipo: Literal["atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia", "evento", "emprendimiento", "directorio"]
     nombre: str = Field(min_length=3, max_length=120)
     resumen: str = ""
     orden: int = 0
@@ -136,7 +136,7 @@ class TurismoCategoriaIn(BaseModel):
 
 
 class TurismoFichaIn(BaseModel):
-    tipo: Literal["atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia"]
+    tipo: Literal["atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia", "emprendimiento", "directorio"]
     categoria_id: int | None = None
     nombre: str = Field(min_length=3, max_length=160)
     resumen: str = Field(min_length=3, max_length=400)

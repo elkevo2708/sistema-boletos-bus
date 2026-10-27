@@ -593,3 +593,44 @@ tfoot th { font-size: 1.15rem; }
   .portal-nav { display: none; width: 100%; }
   .portal-nav.abierto { display: flex; flex-direction: column; }
 }
+
+.portal { --marino: #0c2f6b; --turquesa: #1497b8; --verde-ciudad: #1f8a32; --amarillo: #f2c200; }
+.portal-cabecera { background: #fff; border-bottom: 3px solid var(--turquesa, #1497b8); position: sticky; }
+.portal-barra { min-height: 84px; gap: 0.75rem; width: min(1280px, calc(100% - 1rem)); }
+.portal-menu { display: inline-flex; align-items: center; }
+.marca-portal img { height: 52px; width: auto; display: block; }
+.estrecha .marca-portal { justify-content: center; margin-bottom: 1rem; }
+.estrecha .marca-portal img { height: 72px; }
+.portal-buscar { border: 1px solid #d5e4ea; background: #f7fbfd; }
+.portal-idioma { display: flex; align-items: center; gap: 0.25rem; color: #0c2f6b; font-weight: 700; }
+.portal-idioma select { min-height: 36px; width: auto; border-radius: 999px; padding: 0 0.4rem; }
+.portal-nav { margin-left: auto; align-items: stretch; overflow: visible; padding-bottom: 0; }
+.portal-nav a { min-width: 84px; color: #0c2f6b; border-left: 1px solid #e5eef2; border-radius: 0; padding: 0.4rem 0.55rem; }
+.portal-nav a small, .portal-item-movil small { background: #f2c200; color: #0c2f6b; border-radius: 999px; min-width: 1.3rem; font-size: 0.68rem; line-height: 1.2rem; }
+.portal-nav a[href="/transporte"] small { background: #2f9e3a; color: #fff; }
+.portal-nav a[href="/taxi"] small { background: #1497b8; color: #fff; }
+.portal-login { min-width: 72px; }
+.portal-desplegable { width: min(1280px, calc(100% - 1rem)); margin: 0 auto 0.8rem; display: grid; gap: 0.45rem; background: #fff; }
+.portal-desplegable a { color: #0c2f6b; font-weight: 700; text-decoration: none; }
+.portal-movil-items { display: none; }
+.pin-taxi span { display: block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #0c2f6b; }
+.taxi-pagina { display: grid; grid-template-columns: 1.4fr 0.8fr; min-height: 70vh; }
+.taxi-mapa { min-height: 520px; }
+.taxi-panel { padding: 1rem; display: grid; align-content: start; gap: 0.7rem; }
+.taxi-cerca { background: #f2c200; color: #0c2f6b; padding: 0.7rem; border-radius: 12px; }
+.conductor-pagina { width: min(560px, calc(100% - 1.5rem)); margin: 1rem auto; display: grid; gap: 0.8rem; }
+.btn-grande { min-height: 64px; font-size: 1.15rem; }
+.dashboard { display: grid; grid-template-columns: 220px 1fr; min-height: 70vh; width: min(1180px, calc(100% - 1rem)); margin: 1rem auto; gap: 1rem; }
+.dash-lado { display: flex; flex-direction: column; gap: 0.35rem; background: #0c2f6b; color: #fff; border-radius: 16px; padding: 1rem; }
+.dash-lado button { background: transparent; color: #fff; border: 0; text-align: left; min-height: 44px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+.dash-lado button.activo { background: #f2c200; color: #0c2f6b; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7rem; margin: 1rem 0; }
+.kpis article { background: #fff; border-top: 4px solid #1497b8; border-radius: 12px; padding: 0.8rem; box-shadow: 0 8px 20px rgba(12, 47, 107, 0.06); }
+.kpis strong { display: block; font-size: 1.4rem; color: #0c2f6b; }
+@media (max-width: 900px) {
+  .portal-nav { display: none; }
+  .portal-movil-items { display: grid; }
+  .portal-item-movil { display: flex; align-items: center; gap: 0.5rem; color: #0c2f6b; text-decoration: none; font-weight: 700; }
+  .taxi-pagina, .dashboard, .kpis { grid-template-columns: 1fr; }
+  .taxi-mapa { min-height: 320px; }
+}

@@ -8,14 +8,14 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencias import exigir_admin, obtener_sesion
+from app.dependencias import exigir_turismo, obtener_sesion
 from app.errores import traducir_error_mysql
 from app.esquemas import TurismoCategoriaIn, TurismoContactoIn, TurismoEventoIn, TurismoFichaIn
 from app.slug import slugificar
 
 router = APIRouter()
 MEDIOS = Path("/app/medios")
-TIPOS_FICHA = ("atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia")
+TIPOS_FICHA = ("atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia", "emprendimiento", "directorio")
 EXTENSIONES = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
 
 
@@ -102,6 +102,14 @@ async def resumen(sesion: AsyncSession = Depends(obtener_sesion)):
         await sesion.execute(text("SELECT COUNT(*) FROM turismo_eventos WHERE activo = 1"))
     ).scalar_one()
     conteos["evento"] = int(eventos)
+    conteos["transporte"] = int((await sesion.execute(text("SELECT COUNT(*) FROM rutas"))).scalar_one())
+    try:
+        conteos["taxi"] = int(
+            (await sesion.execute(text("SELECT COUNT(*) FROM taxi_conductores WHERE activo = 1 AND estado = 'disponible'"))).scalar_one()
+        )
+    except SQLAlchemyError:
+        await sesion.rollback()
+        conteos["taxi"] = 0
     destacados = (
         await sesion.execute(
             text(
@@ -308,7 +316,7 @@ async def contacto(datos: TurismoContactoIn, sesion: AsyncSession = Depends(obte
 
 
 @router.get("/admin/turismo/categorias")
-async def admin_categorias(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depends(obtener_sesion)):
+async def admin_categorias(_: dict = Depends(exigir_turismo), sesion: AsyncSession = Depends(obtener_sesion)):
     filas = (
         await sesion.execute(text("SELECT * FROM turismo_categorias ORDER BY tipo, orden, nombre"))
     ).mappings().all()
@@ -318,7 +326,7 @@ async def admin_categorias(_: dict = Depends(exigir_admin), sesion: AsyncSession
 @router.post("/admin/turismo/categorias", status_code=201)
 async def crear_categoria(
     datos: TurismoCategoriaIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     slug = await _slug_unico(
@@ -352,7 +360,7 @@ async def crear_categoria(
 async def editar_categoria(
     categoria_id: int,
     datos: TurismoCategoriaIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     await sesion.execute(
@@ -379,7 +387,7 @@ async def editar_categoria(
 @router.delete("/admin/turismo/categorias/{categoria_id}", status_code=204)
 async def borrar_categoria(
     categoria_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     resultado = await sesion.execute(text("DELETE FROM turismo_categorias WHERE id = :id"), {"id": categoria_id})
@@ -389,7 +397,7 @@ async def borrar_categoria(
 
 
 @router.get("/admin/turismo/fichas")
-async def admin_fichas(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depends(obtener_sesion)):
+async def admin_fichas(_: dict = Depends(exigir_turismo), sesion: AsyncSession = Depends(obtener_sesion)):
     filas = (
         await sesion.execute(
             text(
@@ -408,7 +416,7 @@ async def admin_fichas(_: dict = Depends(exigir_admin), sesion: AsyncSession = D
 @router.post("/admin/turismo/fichas", status_code=201)
 async def crear_ficha(
     datos: TurismoFichaIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     slug = await _slug_unico(
@@ -422,7 +430,7 @@ async def crear_ficha(
 async def editar_ficha(
     ficha_id: int,
     datos: TurismoFichaIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     actual = (await sesion.execute(text("SELECT slug FROM turismo_fichas WHERE id = :id"), {"id": ficha_id})).first()
@@ -435,7 +443,7 @@ async def editar_ficha(
 @router.delete("/admin/turismo/fichas/{ficha_id}", status_code=204)
 async def borrar_ficha(
     ficha_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     resultado = await sesion.execute(text("DELETE FROM turismo_fichas WHERE id = :id"), {"id": ficha_id})
@@ -500,7 +508,7 @@ async def _guardar_ficha(sesion: AsyncSession, datos: TurismoFichaIn, slug: str,
 
 
 @router.get("/admin/turismo/eventos")
-async def admin_eventos(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depends(obtener_sesion)):
+async def admin_eventos(_: dict = Depends(exigir_turismo), sesion: AsyncSession = Depends(obtener_sesion)):
     filas = (
         await sesion.execute(
             text(
@@ -519,7 +527,7 @@ async def admin_eventos(_: dict = Depends(exigir_admin), sesion: AsyncSession = 
 @router.post("/admin/turismo/eventos", status_code=201)
 async def crear_evento(
     datos: TurismoEventoIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     slug = await _slug_unico(sesion, "turismo_eventos", "slug", slugificar(datos.titulo), None)
@@ -531,7 +539,7 @@ async def crear_evento(
 async def editar_evento(
     evento_id: int,
     datos: TurismoEventoIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     actual = (await sesion.execute(text("SELECT slug FROM turismo_eventos WHERE id = :id"), {"id": evento_id})).first()
@@ -544,7 +552,7 @@ async def editar_evento(
 @router.delete("/admin/turismo/eventos/{evento_id}", status_code=204)
 async def borrar_evento(
     evento_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     resultado = await sesion.execute(text("DELETE FROM turismo_eventos WHERE id = :id"), {"id": evento_id})
@@ -602,7 +610,7 @@ async def _guardar_evento(sesion: AsyncSession, datos: TurismoEventoIn, slug: st
 
 
 @router.get("/admin/turismo/galeria")
-async def admin_galeria(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depends(obtener_sesion)):
+async def admin_galeria(_: dict = Depends(exigir_turismo), sesion: AsyncSession = Depends(obtener_sesion)):
     return await galeria(sesion)
 
 
@@ -613,7 +621,7 @@ async def crear_foto(
     credito: str = "",
     orden: int = 0,
     archivo: UploadFile = File(),
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     nombre = await _guardar_imagen(archivo)
@@ -639,7 +647,7 @@ async def crear_foto(
 @router.delete("/admin/turismo/galeria/{foto_id}", status_code=204)
 async def borrar_foto(
     foto_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     resultado = await sesion.execute(text("DELETE FROM turismo_galeria WHERE id = :id"), {"id": foto_id})
@@ -649,7 +657,7 @@ async def borrar_foto(
 
 
 @router.get("/admin/turismo/mensajes")
-async def mensajes(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depends(obtener_sesion)):
+async def mensajes(_: dict = Depends(exigir_turismo), sesion: AsyncSession = Depends(obtener_sesion)):
     filas = (
         await sesion.execute(text("SELECT id, nombre, email, mensaje, creado_en FROM turismo_mensajes ORDER BY id DESC LIMIT 50"))
     ).mappings().all()
@@ -664,7 +672,7 @@ async def mensajes(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depen
 @router.post("/admin/turismo/medios", status_code=201)
 async def subir_medio(
     archivo: UploadFile = File(),
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_turismo),
 ):
     nombre = await _guardar_imagen(archivo)
     return {"archivo": nombre, "url": f"/medios/{nombre}"}

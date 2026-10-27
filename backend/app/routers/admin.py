@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencias import exigir_admin, obtener_sesion
+from app.dependencias import exigir_transporte, obtener_sesion
 from app.horarios import generar_salidas
 from app.errores import traducir_error_mysql
 from app.esquemas import BusEstadoIn, BusIn, CiudadIn, RutaIn, TarifaIn, ViajeIn
@@ -18,7 +18,7 @@ router = APIRouter()
 
 @router.get("/rutas")
 async def listar_rutas(
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     filas = (
@@ -40,7 +40,7 @@ async def listar_rutas(
 
 @router.get("/ciudades")
 async def listar_ciudades_admin(
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     filas = (
@@ -54,7 +54,7 @@ async def listar_ciudades_admin(
 @router.post("/ciudades", status_code=201)
 async def crear_ciudad(
     datos: CiudadIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     try:
@@ -72,7 +72,7 @@ async def crear_ciudad(
 @router.delete("/ciudades/{ciudad_id}", status_code=204)
 async def borrar_ciudad(
     ciudad_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     try:
@@ -91,7 +91,7 @@ async def borrar_ciudad(
 @router.post("/rutas", status_code=201)
 async def crear_ruta(
     datos: RutaIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     try:
@@ -126,7 +126,7 @@ async def crear_ruta(
 @router.delete("/rutas/{ruta_id}", status_code=204)
 async def borrar_ruta(
     ruta_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     try:
@@ -144,7 +144,7 @@ async def borrar_ruta(
 
 @router.get("/buses")
 async def listar_buses(
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     filas = (
@@ -185,7 +185,7 @@ def _asientos_de(bus_id: int, pisos: int, filas: int) -> list[dict]:
 @router.post("/buses", status_code=201)
 async def crear_bus(
     datos: BusIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     capacidad = datos.pisos * datos.filas * 4
@@ -236,7 +236,7 @@ async def crear_bus(
 async def cambiar_estado_bus(
     bus_id: int,
     datos: BusEstadoIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     resultado = await sesion.execute(
@@ -253,7 +253,7 @@ async def cambiar_estado_bus(
 @router.delete("/buses/{bus_id}", status_code=204)
 async def borrar_bus(
     bus_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     viajes = (
@@ -277,7 +277,7 @@ async def borrar_bus(
 
 @router.get("/viajes")
 async def listar_viajes_admin(
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     filas = (
@@ -304,7 +304,7 @@ async def listar_viajes_admin(
 @router.delete("/viajes/{viaje_id}")
 async def cancelar_viaje(
     viaje_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     ocupados = (
@@ -335,7 +335,7 @@ async def cancelar_viaje(
 @router.post("/viajes", status_code=201)
 async def crear_viaje(
     datos: ViajeIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     if datos.salida <= ahora_colombia():
@@ -396,7 +396,7 @@ async def crear_viaje(
 async def cambiar_tarifa(
     ruta_id: int,
     datos: TarifaIn,
-    usuario: dict = Depends(exigir_admin),
+    usuario: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     try:
@@ -450,7 +450,7 @@ async def cambiar_tarifa(
 @router.get("/ventas")
 async def ventas_del_dia(
     fecha: date | None = Query(default=None),
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     if fecha is None:
@@ -495,6 +495,6 @@ async def ventas_del_dia(
 
 
 @router.post("/horarios/generar")
-async def generar_horario(_: dict = Depends(exigir_admin)):
+async def generar_horario(_: dict = Depends(exigir_transporte)):
     creados = await generar_salidas()
     return {"creados": creados, "dias": 30}

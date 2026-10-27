@@ -6,13 +6,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencias import exigir_admin, obtener_sesion
+from app.dependencias import exigir_transporte, obtener_sesion
 from app.errores import traducir_error_mysql
 from app.esquemas import AnuncioIn, BlogIn
 from app.presentacion import fila_a_dict
 from app.slug import slugificar
 
-router = APIRouter(dependencies=[Depends(exigir_admin)])
+router = APIRouter(dependencies=[Depends(exigir_transporte)])
 MEDIOS = Path("/app/medios")
 TIPOS = {
     "image/jpeg": ".jpg",

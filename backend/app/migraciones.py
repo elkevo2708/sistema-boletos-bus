@@ -8,6 +8,7 @@ from app.database import engine
 
 SQL_PAGOS = Path(__file__).parent / "sql" / "migracion_pagos_portada.sql"
 SQL_TURISMO = Path(__file__).parent / "sql" / "migracion_turismo.sql"
+SQL_PORTAL_TAXI = Path(__file__).parent / "sql" / "migracion_portal_taxi.sql"
 
 
 async def _ejecutar(sql: str) -> None:
@@ -31,6 +32,7 @@ async def asegurar_esquema() -> None:
     await _aplicar_archivo(SQL_PAGOS)
     await _ambito_portada()
     await _aplicar_archivo(SQL_TURISMO)
+    await _aplicar_archivo(SQL_PORTAL_TAXI)
 
 
 def _sentencias(contenido: str) -> list[str]:

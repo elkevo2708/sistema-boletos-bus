@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { solicitar } from '../api';
+import MarcaPortal from '../componentes/MarcaPortal';
 import { useAuth } from '../contexto/AuthContext';
 
 export default function Login() {
@@ -10,7 +11,6 @@ export default function Login() {
   const { iniciar } = useAuth();
   const navegar = useNavigate();
   const [params] = useSearchParams();
-  const siguiente = params.get('siguiente') || '/';
 
   async function alEnviar(event) {
     event.preventDefault();
@@ -35,7 +35,15 @@ export default function Login() {
           },
         });
       iniciar(respuesta);
-      navegar(siguiente.startsWith('/') ? siguiente : '/');
+      const porRol = {
+        conductor: '/conductor',
+        administrador: '/admin',
+        operador_turismo: '/admin',
+        operador_transporte: '/admin',
+        operador_taxi: '/admin',
+      };
+      const pedido = params.get('siguiente');
+      navegar(pedido && pedido.startsWith('/') ? pedido : (porRol[respuesta.usuario.rol] || '/'));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -45,6 +53,7 @@ export default function Login() {
 
   return (
     <div className="pagina estrecha">
+      <MarcaPortal />
       <div className="pestanas" role="tablist" aria-label="Acceso">
         <button type="button" role="tab" aria-selected={modo === 'ingresar'} className={modo === 'ingresar' ? 'activo' : ''} onClick={() => setModo('ingresar')} aria-label="Ingresar con una cuenta existente">
           Ingresar

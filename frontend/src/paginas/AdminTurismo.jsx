@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { enviarFormulario, solicitar } from '../api';
 
-const TIPOS = ['atractivo', 'gastronomia', 'hospedaje', 'actividad', 'ruta', 'parroquia', 'guia', 'evento'];
+const TIPOS = ['atractivo', 'gastronomia', 'hospedaje', 'actividad', 'ruta', 'parroquia', 'guia', 'emprendimiento', 'directorio', 'evento'];
 
 const FICHA_VACIA = {
   tipo: 'atractivo',

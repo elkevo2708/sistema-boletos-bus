@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from app.cobro import cerrar_intencion
 from app.config import settings
-from app.dependencias import exigir_admin, obtener_sesion
+from app.dependencias import exigir_transporte, obtener_sesion
 from app.emision import completar_emision
 from app.pagos import (
     METODOS,
@@ -63,7 +63,7 @@ async def metodos(sesion: AsyncSession = Depends(obtener_sesion)):
 
 
 @router.get("/admin/pagos/metodos")
-async def metodos_admin(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depends(obtener_sesion)):
+async def metodos_admin(_: dict = Depends(exigir_transporte), sesion: AsyncSession = Depends(obtener_sesion)):
     filas = (await sesion.execute(text("SELECT codigo, activo FROM metodos_pago"))).mappings().all()
     activos = {fila["codigo"]: bool(fila["activo"]) for fila in filas}
     return [_estado_admin(codigo, activos.get(codigo, True)) for codigo in METODOS]
@@ -73,7 +73,7 @@ async def metodos_admin(_: dict = Depends(exigir_admin), sesion: AsyncSession = 
 async def cambiar_metodo(
     codigo: str,
     cuerpo: dict,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     if codigo not in METODOS:

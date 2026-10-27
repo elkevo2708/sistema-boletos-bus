@@ -52,3 +52,22 @@ async def exigir_admin(usuario: dict = Depends(usuario_actual)) -> dict:
     if usuario["rol"] != "administrador":
         raise HTTPException(status_code=403, detail="Se requiere rol administrador")
     return usuario
+
+
+def exigir_roles(*roles: str):
+    permitidos = set(roles)
+
+    async def dependencia(usuario: dict = Depends(usuario_actual)) -> dict:
+        if usuario["rol"] not in permitidos:
+            raise HTTPException(status_code=403, detail="No tienes permiso para este módulo")
+        return usuario
+
+    return dependencia
+
+
+exigir_turismo = exigir_roles("administrador", "operador_turismo")
+exigir_transporte = exigir_roles("administrador", "operador_transporte")
+exigir_taxi = exigir_roles("administrador", "operador_taxi")
+exigir_portada = exigir_roles("administrador", "operador_turismo", "operador_transporte")
+exigir_panel = exigir_roles("administrador", "operador_turismo", "operador_transporte", "operador_taxi")
+exigir_pasajero = exigir_roles("administrador", "cliente", "operador_turismo", "operador_transporte", "operador_taxi", "conductor")

@@ -12,7 +12,7 @@ from app.config import settings
 from app.database import engine
 from app.horarios import generar_salidas
 from app.migraciones import asegurar_esquema
-from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, pagos_publico, portada, tiempo_real, turismo, viajes
+from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, pagos_publico, panel, portada, taxi, tiempo_real, turismo, viajes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("lamana")
@@ -59,6 +59,8 @@ app.include_router(facturacion.router)
 app.include_router(pagos_publico.router)
 app.include_router(portada.router)
 app.include_router(turismo.router)
+app.include_router(taxi.router)
+app.include_router(panel.router)
 app.include_router(tiempo_real.router)
 Path("/app/medios").mkdir(parents=True, exist_ok=True)
 app.mount("/medios", StaticFiles(directory="/app/medios"), name="medios")

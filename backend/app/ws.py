@@ -46,6 +46,55 @@ class GestorAsientos:
 gestor = GestorAsientos()
 
 
+class GestorTaxi:
+    def __init__(self) -> None:
+        self.flota: set[WebSocket] = set()
+        self.viajes: dict[int, set[WebSocket]] = {}
+        self._lock = asyncio.Lock()
+
+    async def conectar_flota(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        async with self._lock:
+            self.flota.add(websocket)
+
+    async def conectar_viaje(self, viaje_id: int, websocket: WebSocket) -> None:
+        await websocket.accept()
+        async with self._lock:
+            self.viajes.setdefault(viaje_id, set()).add(websocket)
+
+    async def salir_flota(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            self.flota.discard(websocket)
+
+    async def salir_viaje(self, viaje_id: int, websocket: WebSocket) -> None:
+        async with self._lock:
+            sala = self.viajes.get(viaje_id)
+            if sala is not None:
+                sala.discard(websocket)
+                if not sala:
+                    self.viajes.pop(viaje_id, None)
+
+    async def _enviar(self, sockets: list[WebSocket], mensaje: dict) -> None:
+        for websocket in sockets:
+            try:
+                await websocket.send_json(mensaje)
+            except Exception:
+                log.debug("Socket de taxi cerrado")
+
+    async def emitir_flota(self, mensaje: dict) -> None:
+        async with self._lock:
+            sockets = list(self.flota)
+        await self._enviar(sockets, mensaje)
+
+    async def emitir_viaje(self, viaje_id: int, mensaje: dict) -> None:
+        async with self._lock:
+            sockets = list(self.viajes.get(viaje_id, ()))
+        await self._enviar(sockets, mensaje)
+
+
+gestor_taxi = GestorTaxi()
+
+
 async def publicar_asiento(sesion: AsyncSession, viaje_id: int, asiento_id: int) -> None:
     fila = (
         await sesion.execute(

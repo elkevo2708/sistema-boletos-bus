@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencias import exigir_admin, obtener_sesion
+from app.dependencias import exigir_portada, obtener_sesion
 from app.errores import traducir_error_mysql
 from app.esquemas import PortadaIn
 
@@ -105,7 +105,7 @@ async def publica(ambito: str | None = None, sesion: AsyncSession = Depends(obte
 
 
 @router.get("/admin/portada")
-async def listar(_: dict = Depends(exigir_admin), sesion: AsyncSession = Depends(obtener_sesion)):
+async def listar(_: dict = Depends(exigir_portada), sesion: AsyncSession = Depends(obtener_sesion)):
     filas = (await sesion.execute(text("SELECT * FROM portada ORDER BY orden, id"))).mappings().all()
     return [publicar(dict(fila), completo=True) for fila in filas]
 
@@ -124,7 +124,7 @@ async def crear(
     ambito: str = Form(default="portal"),
     archivo: UploadFile | None = File(default=None),
     poster: UploadFile | None = File(default=None),
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_portada),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     datos = _validar(tipo, origen, titulo, subtitulo, texto_boton, enlace_boton, enlace, orden, activo, ambito)
@@ -164,7 +164,7 @@ async def crear(
 async def actualizar(
     diapositiva_id: int,
     datos: PortadaIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_portada),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     existe = (await sesion.execute(text("SELECT id FROM portada WHERE id = :id"), {"id": diapositiva_id})).first()
@@ -205,7 +205,7 @@ async def actualizar(
 @router.delete("/admin/portada/{diapositiva_id}", status_code=204)
 async def eliminar(
     diapositiva_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_portada),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     resultado = await sesion.execute(text("DELETE FROM portada WHERE id = :id"), {"id": diapositiva_id})

@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.consulta_identificacion import consultar_identificacion
-from app.dependencias import exigir_admin, obtener_sesion, usuario_actual
+from app.dependencias import exigir_transporte, obtener_sesion, usuario_actual
 from app.emision import _para_ride, reenviar, resumen
 from app.errores import traducir_error_mysql
 from app.esquemas import EmisorIn
@@ -128,7 +128,7 @@ async def listar_facturas(
     desde: str | None = None,
     hasta: str | None = None,
     metodo: str | None = None,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     metodo_limpio = (metodo or "").strip() or None
@@ -169,7 +169,7 @@ async def listar_facturas(
 @router.post("/admin/facturas/{factura_id}/reenviar")
 async def reenviar_factura(
     factura_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     try:
@@ -185,7 +185,7 @@ async def reenviar_factura(
 @router.get("/admin/facturas/{factura_id}/ride")
 async def ride_admin(
     factura_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     return _pdf(await _factura(sesion, factura_id))
@@ -194,7 +194,7 @@ async def ride_admin(
 @router.get("/admin/facturas/{factura_id}/xml")
 async def xml_admin(
     factura_id: int,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     return _xml(await _factura(sesion, factura_id))
@@ -202,7 +202,7 @@ async def xml_admin(
 
 @router.get("/admin/emisor")
 async def leer_emisor(
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     fila = (await sesion.execute(text("SELECT * FROM emisor WHERE id = 1"))).mappings().first()
@@ -214,7 +214,7 @@ async def leer_emisor(
 @router.put("/admin/emisor")
 async def guardar_emisor(
     datos: EmisorIn,
-    _: dict = Depends(exigir_admin),
+    _: dict = Depends(exigir_transporte),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     try:

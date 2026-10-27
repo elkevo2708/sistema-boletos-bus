@@ -18,6 +18,8 @@ import PortalGaleria from './paginas/PortalGaleria';
 import PortalInicio from './paginas/PortalInicio';
 import PortalLista from './paginas/PortalLista';
 import PortalMapa from './paginas/PortalMapa';
+import Taxi from './paginas/Taxi';
+import Conductor from './paginas/Conductor';
 
 function ViajeViejo() {
   const { id } = useParams();
@@ -42,6 +44,10 @@ export default function App() {
         <Route path="/parroquias" element={<PortalLista tipo="parroquia" titulo="Parroquias" bajada="La cabecera y las parroquias rurales de La Maná." />} />
         <Route path="/parroquias/:slug" element={<PortalFicha tipo="parroquia" volver="Parroquias" />} />
         <Route path="/gastronomia" element={<PortalLista tipo="gastronomia" titulo="Gastronomía" bajada="La mesa del subtrópico, sin un local decretado." />} />
+        <Route path="/emprendimientos" element={<PortalLista tipo="emprendimiento" titulo="Emprendimientos" bajada="Fichas de muestra hasta que un operador publique un negocio real." />} />
+        <Route path="/emprendimientos/:slug" element={<PortalFicha tipo="emprendimiento" volver="Emprendimientos" />} />
+        <Route path="/directorio" element={<PortalLista tipo="directorio" titulo="Directorio" bajada="Servicios de ejemplo. Los negocios reales se cargan en el panel." />} />
+        <Route path="/directorio/:slug" element={<PortalFicha tipo="directorio" volver="Directorio" />} />
         <Route path="/gastronomia/:slug" element={<PortalFicha tipo="gastronomia" volver="Gastronomía" />} />
         <Route path="/hospedaje" element={<PortalLista tipo="hospedaje" titulo="Hospedaje" bajada="Tipos de alojamiento. Los nombres concretos se cargan en taquilla." />} />
         <Route path="/hospedaje/:slug" element={<PortalFicha tipo="hospedaje" volver="Hospedaje" />} />
@@ -54,7 +60,9 @@ export default function App() {
         <Route path="/galeria" element={<PortalGaleria />} />
         <Route path="/mapa" element={<PortalMapa />} />
         <Route path="/contacto" element={<PortalContacto />} />
+        <Route path="/taxi" element={<Taxi />} />
       </Route>
+      <Route path="/conductor" element={<Conductor />} />
       <Route path="/viajes/:id" element={<ViajeViejo />} />
       <Route path="/noticias/:slug" element={<NotaVieja />} />
       <Route path="/noticias" element={<Navigate to="/transporte/noticias" replace />} />

@@ -1,0 +1,12 @@
+{
+  "name": "La Maná Recorres",
+  "short_name": "La Maná",
+  "start_url": "/taxi",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0c2f6b",
+  "lang": "es",
+  "icons": [
+    { "src": "/favicon-lamana.png", "sizes": "256x256", "type": "image/png", "purpose": "any" }
+  ]
+}

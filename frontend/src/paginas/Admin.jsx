@@ -8,6 +8,7 @@ import { PanelEmisor, PanelFacturas } from './AdminFacturas';
 import PanelFlota from './AdminFlota';
 import AdminPagos from './AdminPagos';
 import AdminPortada from './AdminPortada';
+import AdminTaxis from './AdminTaxis';
 import AdminTurismo from './AdminTurismo';
 
 export default function Admin() {
@@ -20,9 +21,17 @@ export default function Admin() {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [modulo, setModulo] = useState('resumen');
   const [pestana, setPestana] = useState('operacion');
+  const [kpis, setKpis] = useState(null);
 
-  const esAdmin = usuario?.rol === 'administrador';
+  const modulos = {
+    administrador: ['resumen', 'turismo', 'transporte', 'taxi'],
+    operador_turismo: ['turismo'],
+    operador_transporte: ['transporte'],
+    operador_taxi: ['taxi'],
+  }[usuario?.rol] || [];
+  const puedeTransporte = modulos.includes('transporte');
   const carga = useRef(0);
 
   function recargarCatalogo() {
@@ -41,7 +50,15 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    if (!esAdmin) return;
+    if (!usuario || !modulos.length) return;
+    if (!modulos.includes(modulo)) setModulo(modulos[0]);
+    if (modulos.includes('resumen')) {
+      solicitar('/admin/resumen', { token }).then(setKpis).catch(() => {});
+    }
+  }, [usuario, token]);
+
+  useEffect(() => {
+    if (!puedeTransporte) return;
     const id = carga.current + 1;
     carga.current = id;
     Promise.all([
@@ -56,7 +73,7 @@ export default function Admin() {
       setViajes(listaViajes);
       setVentas(reporte);
     }).catch((err) => setError(err.message));
-  }, [esAdmin, token]);
+  }, [puedeTransporte, token]);
 
   async function crearViaje(event) {
     event.preventDefault();
@@ -192,58 +209,85 @@ export default function Admin() {
   if (!usuario) {
     return (
       <div className="pagina estrecha">
-        <h1>Taquilla</h1>
-        <p>Entra con la cuenta administradora para programar viajes y ver las ventas.</p>
-        <Link className="btn btn-pino" to="/ingresar?siguiente=/admin" aria-label="Ingresar a taquilla">Ingresar</Link>
+        <h1>Panel</h1>
+        <p>Un solo ingreso para turismo, transporte y taxis.</p>
+        <Link className="btn btn-pino" to="/ingresar?siguiente=/admin" aria-label="Ingresar al panel">Ingresar</Link>
       </div>
     );
   }
 
-  if (!esAdmin) {
+  if (!modulos.length) {
     return (
       <div className="pagina estrecha">
-        <h1>Taquilla</h1>
-        <p className="aviso" role="alert">Esta cuenta no tiene rol administrador.</p>
+        <h1>Panel</h1>
+        <p className="aviso" role="alert">Esta cuenta no administra un módulo.</p>
       </div>
     );
   }
 
+  const etiquetas = { resumen: 'Resumen', turismo: 'Portal turismo', transporte: 'Transporte', taxi: 'Taxis' };
+  const subtransporte = [
+    ['operacion', 'Viajes'],
+    ['pagos', 'Pagos'],
+    ['flota', 'Flota'],
+    ['facturas', 'Facturas'],
+    ['emisor', 'Emisor SRI'],
+    ['blog', 'Noticias'],
+    ['anuncios', 'Promos'],
+    ['galeria', 'Galería'],
+  ];
+
   return (
-    <div className="pagina">
-      <h1>Taquilla</h1>
-      <p className="lead">Salidas, tarifas, facturas, noticias, promociones y la galería de la cooperativa.</p>
-      <div className="filtros" role="tablist" aria-label="Secciones de taquilla">
-        {[
-          ['operacion', 'Operación'],
-          ['portada', 'Portada'],
-          ['turismo', 'Turismo'],
-          ['pagos', 'Pagos'],
-          ['flota', 'Flota'],
-          ['facturas', 'Facturas'],
-          ['emisor', 'Emisor'],
-          ['blog', 'Noticias'],
-          ['anuncios', 'Anuncios'],
-          ['galeria', 'Galería'],
-        ].map(([id, etiqueta]) => (
-          <button key={id} type="button" role="tab" aria-selected={pestana === id} className={pestana === id ? 'activo' : ''} onClick={() => setPestana(id)} aria-label={`Abrir ${etiqueta}`}>
-            {etiqueta}
+    <div className="dashboard">
+      <aside className="dash-lado" aria-label="Módulos del panel">
+        <p className="sobrelinea">Panel</p>
+        {modulos.map((id) => (
+          <button key={id} type="button" className={modulo === id ? 'activo' : ''} onClick={() => setModulo(id)} aria-label={`Abrir ${etiquetas[id]}`}>
+            {etiquetas[id]}
           </button>
         ))}
-      </div>
+      </aside>
+      <div className="dash-cuerpo">
+      <h1>{etiquetas[modulo]}</h1>
+      {modulo === 'resumen' && (
+        <div className="kpis" aria-label="Indicadores">
+          <article><strong>{formatearPesos(kpis?.transporte?.ventas_hoy || 0)}</strong><span>Ventas de boletos hoy</span></article>
+          <article><strong>{kpis?.transporte?.viajes_hoy ?? '—'}</strong><span>Viajes del día</span></article>
+          <article><strong>{kpis?.transporte ? `${Math.round(kpis.transporte.ocupacion * 100)} %` : '—'}</strong><span>Ocupación</span></article>
+          <article><strong>{kpis?.turismo?.mensajes ?? '—'}</strong><span>Mensajes</span></article>
+          <article><strong>{kpis?.turismo?.fichas ?? '—'}</strong><span>Fichas turísticas</span></article>
+          <article><strong>{kpis?.turismo?.eventos_proximos ?? '—'}</strong><span>Eventos próximos</span></article>
+          <article><strong>{kpis?.taxi?.viajes_hoy ?? '—'}</strong><span>Viajes de taxi hoy</span></article>
+        </div>
+      )}
+      {modulo === 'turismo' && (
+        <div className="filtros" role="tablist" aria-label="Portal turismo">
+          <button type="button" className={pestana === 'turismo' ? 'activo' : ''} onClick={() => setPestana('turismo')} aria-label="Abrir fichas">Fichas y agenda</button>
+          <button type="button" className={pestana === 'portada' ? 'activo' : ''} onClick={() => setPestana('portada')} aria-label="Abrir portada">Portada</button>
+        </div>
+      )}
+      {modulo === 'transporte' && (
+        <div className="filtros" role="tablist" aria-label="Transporte">
+          {subtransporte.map(([id, etiqueta]) => (
+            <button key={id} type="button" className={pestana === id ? 'activo' : ''} onClick={() => setPestana(id)} aria-label={`Abrir ${etiqueta}`}>{etiqueta}</button>
+          ))}
+        </div>
+      )}
       {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
       {error && <p className="aviso" role="alert">{error}</p>}
 
-      {pestana === 'portada' && <AdminPortada token={token} />}
-      {pestana === 'turismo' && <AdminTurismo token={token} />}
-      {pestana === 'pagos' && <AdminPagos token={token} />}
-      {pestana === 'flota' && <PanelFlota token={token} onCambio={recargarCatalogo} />}
-      {pestana === 'facturas' && <PanelFacturas token={token} />}
-      {pestana === 'emisor' && <PanelEmisor token={token} />}
-      {pestana === 'blog' && <PanelBlog token={token} />}
-      {pestana === 'anuncios' && <PanelAnuncios token={token} />}
-      {pestana === 'galeria' && <PanelGaleria token={token} />}
+      {modulo === 'turismo' && pestana === 'portada' && <AdminPortada token={token} />}
+      {modulo === 'turismo' && pestana !== 'portada' && <AdminTurismo token={token} />}
+      {modulo === 'taxi' && <AdminTaxis token={token} />}
+      {modulo === 'transporte' && pestana === 'pagos' && <AdminPagos token={token} />}
+      {modulo === 'transporte' && pestana === 'flota' && <PanelFlota token={token} onCambio={recargarCatalogo} />}
+      {modulo === 'transporte' && pestana === 'facturas' && <PanelFacturas token={token} />}
+      {modulo === 'transporte' && pestana === 'emisor' && <PanelEmisor token={token} />}
+      {modulo === 'transporte' && pestana === 'blog' && <PanelBlog token={token} />}
+      {modulo === 'transporte' && pestana === 'anuncios' && <PanelAnuncios token={token} />}
+      {modulo === 'transporte' && pestana === 'galeria' && <PanelGaleria token={token} />}
 
-      {pestana === 'operacion' && (
+      {modulo === 'transporte' && (pestana === 'operacion' || pestana === 'turismo' || pestana === 'portada') && (
       <>
       <div className="rejilla-admin">
         <form className="panel-form" noValidate onSubmit={crearViaje}>
@@ -376,6 +420,7 @@ export default function Admin() {
       </section>
       </>
       )}
+      </div>
     </div>
   );
 }

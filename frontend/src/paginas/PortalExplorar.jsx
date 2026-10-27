@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { solicitar } from '../api';
 import TarjetaTurismo from '../componentes/TarjetaTurismo';
-import { MENU_PORTAL } from '../iconosTurismo';
+import { IDIOMAS, MENU_PORTAL } from '../iconosTurismo';
 
 export default function PortalExplorar() {
   const [params, setParams] = useSearchParams();
@@ -36,7 +36,7 @@ export default function PortalExplorar() {
       </form>
       <div className="portal-chips">
         {MENU_PORTAL.filter((item) => item.tipo).map((item) => (
-          <a key={item.to} href={item.to}>{item.label}</a>
+          <a key={item.to} href={item.to}>{IDIOMAS.es[item.clave]}</a>
         ))}
       </div>
       {error && <p className="aviso" role="alert">{error}</p>}
