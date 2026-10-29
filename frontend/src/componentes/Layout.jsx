@@ -19,7 +19,7 @@ export default function Layout() {
       }
     }
     cerrar();
-    navegar('/transporte');
+    navegar('/');
   }
 
   function cerrarMenu() {
@@ -56,13 +56,13 @@ export default function Layout() {
             <span />
           </button>
           <nav className={menu ? 'nav abierto' : 'nav'} aria-label="Principal">
-            <NavLink to="/transporte" end onClick={cerrarMenu}>Inicio</NavLink>
+            <NavLink to="/" end onClick={cerrarMenu}>Inicio</NavLink>
+            <NavLink to="/transporte" end onClick={cerrarMenu}>Boletos</NavLink>
             <Link to={{ pathname: '/transporte', hash: 'rutas' }} onClick={cerrarMenu}>Rutas</Link>
             <Link to={{ pathname: '/transporte', hash: 'destinos' }} onClick={cerrarMenu}>Destinos</Link>
             <NavLink to="/transporte/encomiendas" onClick={cerrarMenu}>Encomiendas</NavLink>
             <NavLink to="/transporte/noticias" onClick={cerrarMenu}>Noticias</NavLink>
             <NavLink to="/transporte/galeria" onClick={cerrarMenu}>Galería</NavLink>
-            <NavLink to="/" end onClick={cerrarMenu}>Portal</NavLink>
             <NavLink to="/admin" onClick={cerrarMenu}>Taquilla</NavLink>
             {usuario ? (
               <>
@@ -90,8 +90,8 @@ export default function Layout() {
         </div>
         <div>
           <p className="pie-titulo">Enlaces</p>
-          <p><Link to="/transporte">Inicio</Link></p>
-          <p><Link to="/">Portal de turismo</Link></p>
+          <p><Link to="/">Inicio</Link></p>
+          <p><Link to="/transporte">Boletos</Link></p>
           <p><Link to="/transporte/encomiendas">Encomiendas</Link></p>
           <p><Link to="/transporte/noticias">Noticias</Link></p>
           <p><Link to="/transporte/galeria">Galería</Link></p>

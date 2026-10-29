@@ -84,8 +84,8 @@ export default function App() {
         <Route path="/transporte/encomiendas" element={<Carga><Encomiendas /></Carga>} />
         <Route path="/ingresar" element={<Carga><Login /></Carga>} />
         <Route path="/mis-facturas" element={<Carga><MisFacturas /></Carga>} />
-        <Route path="/admin" element={<Carga><Admin /></Carga>} />
       </Route>
+      <Route path="/admin" element={<Carga><Admin /></Carga>} />
     </Routes>
   );
 }

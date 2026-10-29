@@ -135,7 +135,7 @@ export default function PortalLayout() {
       <footer className="portal-pie">
         <div className="contenedor portal-pie-grid">
           <div>
-            <MarcaPortal />
+            <MarcaPortal clara />
             <p>Guía del cantón La Maná, en el subtrópico de Cotopaxi. Los textos se editan en el panel.</p>
           </div>
           <div>

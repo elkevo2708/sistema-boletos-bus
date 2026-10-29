@@ -17,7 +17,7 @@ const CIUDADES = [
 export default function Encomiendas() {
   return (
     <>
-      <EncabezadoPagina kicker="Transporte" titulo="Paquetes en la misma unidad del pasaje." imagen="/encomiendas-lamana.png" />
+      <EncabezadoPagina kicker="Transporte" titulo="Paquetes en la misma unidad del pasaje." imagen="/encomiendas-lamana.png" miga={<><Link to="/">Inicio</Link> / Encomiendas</>} />
     <div className="pagina">
       <p className="lead">
         La cooperativa recibe y entrega encomiendas entre la costa y la sierra.

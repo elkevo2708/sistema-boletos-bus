@@ -10,9 +10,11 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
+from app.demo_tablero import asegurar_demo_tablero
 from app.horarios import generar_salidas
 from app.migraciones import asegurar_esquema
 from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, pagos_publico, panel, portada, taxi, tiempo_real, turismo, viajes
+from app.routers import dashboard as tablero
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("lamana")
@@ -27,6 +29,7 @@ async def vida(_app: FastAPI):
                 await conexion.execute(text("SELECT 1"))
             await asegurar_esquema()
             creados = await generar_salidas()
+            await asegurar_demo_tablero()
             log.info("Conexión a MySQL lista. Salidas nuevas del horario: %s", creados)
             break
         except Exception as exc:
@@ -61,6 +64,7 @@ app.include_router(portada.router)
 app.include_router(turismo.router)
 app.include_router(taxi.router)
 app.include_router(panel.router)
+app.include_router(tablero.router)
 app.include_router(tiempo_real.router)
 Path("/app/medios").mkdir(parents=True, exist_ok=True)
 app.mount("/medios", StaticFiles(directory="/app/medios"), name="medios")

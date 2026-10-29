@@ -76,7 +76,10 @@ export default function Conductor() {
     <div className="conductor-marco">
       <header className="conductor-barra">
         <MarcaPortal />
-        <Link to="/taxi">Ver el mapa</Link>
+        <span className="conductor-enlaces">
+          <Link to="/">Inicio</Link>
+          <Link to="/taxi">Ver el mapa</Link>
+        </span>
       </header>
       <section className="conductor-pagina">
         <p className="sobrelinea">Conductor</p>

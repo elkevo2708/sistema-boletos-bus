@@ -310,7 +310,7 @@ export default function Asientos() {
 
   return (
     <div className="pagina">
-      <p className="miga"><Link to="/transporte">Salidas</Link> / {viaje.origen} → {viaje.destino}</p>
+      <p className="miga"><Link to="/">Inicio</Link> / <Link to="/transporte">Boletos</Link> / {viaje.origen} → {viaje.destino}</p>
       <header className="cabecera-viaje">
         <div>
           <h1>{viaje.origen} → {viaje.destino}</h1>

@@ -1,8 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Bell, Bus, Car, Compass, CreditCard, FileText, Images, LayoutDashboard, LogOut,
+  Map, Megaphone, Moon, Newspaper, PanelLeft, Route, Search, Settings, Sun, Image as ImagenIcon,
+} from 'lucide-react';
 import { solicitar } from '../api';
+import MarcaPortal from '../componentes/MarcaPortal';
 import { useAuth } from '../contexto/AuthContext';
 import { ahoraBogotaInput, fechaBogota, formatearFechaHora, formatearPesos } from '../formato';
+import LogoRecorres from '../ui/LogoRecorres';
 import { PanelAnuncios, PanelBlog, PanelGaleria } from './AdminContenido';
 import { PanelEmisor, PanelFacturas } from './AdminFacturas';
 import PanelFlota from './AdminFlota';
@@ -10,9 +16,61 @@ import AdminPagos from './AdminPagos';
 import AdminPortada from './AdminPortada';
 import AdminTaxis from './AdminTaxis';
 import AdminTurismo from './AdminTurismo';
+import PanelResumen from './PanelResumen';
+
+const ROLES = {
+  administrador: 'Administración',
+  operador_turismo: 'Operador de turismo',
+  operador_transporte: 'Operador de transporte',
+  operador_taxi: 'Operador de taxis',
+};
+
+function gruposDe(puede) {
+  const grupos = [];
+  if (puede.turismo) {
+    grupos.push({
+      id: 'turismo',
+      etiqueta: 'Portal turismo',
+      Icono: Compass,
+      items: [
+        { id: 'fichas', modulo: 'turismo', pestana: 'turismo', etiqueta: 'Fichas y agenda', Icono: Map },
+      ],
+    });
+  }
+  if (puede.transporte) {
+    grupos.push({
+      id: 'transporte',
+      etiqueta: 'Transporte',
+      Icono: Bus,
+      items: [
+        { id: 'operacion', modulo: 'transporte', pestana: 'operacion', etiqueta: 'Viajes', Icono: Route },
+        { id: 'pagos', modulo: 'transporte', pestana: 'pagos', etiqueta: 'Pagos', Icono: CreditCard },
+        { id: 'flota', modulo: 'transporte', pestana: 'flota', etiqueta: 'Flota', Icono: Bus },
+        { id: 'facturas', modulo: 'transporte', pestana: 'facturas', etiqueta: 'Facturas', Icono: FileText },
+        { id: 'blog', modulo: 'transporte', pestana: 'blog', etiqueta: 'Noticias', Icono: Newspaper },
+        { id: 'anuncios', modulo: 'transporte', pestana: 'anuncios', etiqueta: 'Promociones', Icono: Megaphone },
+        { id: 'galeria', modulo: 'transporte', pestana: 'galeria', etiqueta: 'Galería', Icono: Images },
+      ],
+    });
+  }
+  if (puede.taxi) {
+    grupos.push({
+      id: 'taxi',
+      etiqueta: 'Taxis',
+      Icono: Car,
+      items: [{ id: 'taxi', modulo: 'taxi', etiqueta: 'Operación', Icono: Car }],
+    });
+  }
+  const config = [];
+  if (puede.turismo) config.push({ id: 'portada', modulo: 'turismo', pestana: 'portada', etiqueta: 'Portada', Icono: ImagenIcon });
+  if (puede.transporte) config.push({ id: 'emisor', modulo: 'transporte', pestana: 'emisor', etiqueta: 'Emisor SRI', Icono: Settings });
+  if (config.length) grupos.push({ id: 'config', etiqueta: 'Configuración', Icono: Settings, items: config });
+  return grupos;
+}
 
 export default function Admin() {
-  const { usuario, token } = useAuth();
+  const { usuario, token, refreshToken, cerrar } = useAuth();
+  const navegar = useNavigate();
   const [rutas, setRutas] = useState([]);
   const [buses, setBuses] = useState([]);
   const [viajes, setViajes] = useState([]);
@@ -24,15 +82,22 @@ export default function Admin() {
   const [modulo, setModulo] = useState('resumen');
   const [menu, setMenu] = useState(false);
   const [pestana, setPestana] = useState('operacion');
-  const [kpis, setKpis] = useState(null);
+  const [tablero, setTablero] = useState(null);
+  const [cargandoTablero, setCargandoTablero] = useState(false);
+  const [errorTablero, setErrorTablero] = useState('');
+  const [rango, setRango] = useState({ desde: fechaBogota(-29), hasta: fechaBogota(0) });
+  const [consulta, setConsulta] = useState('');
+  const [avisosAbiertos, setAvisosAbiertos] = useState(false);
+  const [oscuro, setOscuro] = useState(() => localStorage.getItem('lamana_panel_tema') === 'oscuro');
+  const [colapsado, setColapsado] = useState(() => localStorage.getItem('lamana_panel_lado') === 'cerrado');
 
-  const modulos = {
-    administrador: ['resumen', 'turismo', 'transporte', 'taxi'],
-    operador_turismo: ['turismo'],
-    operador_transporte: ['transporte'],
-    operador_taxi: ['taxi'],
-  }[usuario?.rol] || [];
-  const puedeTransporte = modulos.includes('transporte');
+  const puede = {
+    turismo: usuario?.rol === 'administrador' || usuario?.rol === 'operador_turismo',
+    transporte: usuario?.rol === 'administrador' || usuario?.rol === 'operador_transporte',
+    taxi: usuario?.rol === 'administrador' || usuario?.rol === 'operador_taxi',
+  };
+  const puedeTransporte = puede.transporte;
+  const grupos = useMemo(() => gruposDe(puede), [usuario?.rol]);
   const carga = useRef(0);
 
   function recargarCatalogo() {
@@ -50,13 +115,29 @@ export default function Admin() {
     });
   }
 
+  function consultarTablero(desde = rango.desde, hasta = rango.hasta) {
+    if (!token) return;
+    setRango({ desde, hasta });
+    setCargandoTablero(true);
+    setErrorTablero('');
+    solicitar(`/admin/dashboard/resumen?desde=${desde}&hasta=${hasta}`, { token })
+      .then(setTablero)
+      .catch((err) => setErrorTablero(err.message))
+      .finally(() => setCargandoTablero(false));
+  }
+
   useEffect(() => {
-    if (!usuario || !modulos.length) return;
-    if (!modulos.includes(modulo)) setModulo(modulos[0]);
-    if (modulos.includes('resumen')) {
-      solicitar('/admin/resumen', { token }).then(setKpis).catch(() => {});
-    }
-  }, [usuario, token]);
+    if (!token || !usuario) return;
+    consultarTablero(fechaBogota(-29), fechaBogota(0));
+  }, [token, usuario]);
+
+  useEffect(() => {
+    localStorage.setItem('lamana_panel_tema', oscuro ? 'oscuro' : 'claro');
+  }, [oscuro]);
+
+  useEffect(() => {
+    localStorage.setItem('lamana_panel_lado', colapsado ? 'cerrado' : 'abierto');
+  }, [colapsado]);
 
   useEffect(() => {
     if (!puedeTransporte) return;
@@ -207,9 +288,30 @@ export default function Admin() {
     }
   }
 
+  async function salir() {
+    if (refreshToken) {
+      try {
+        await solicitar('/auth/logout', { method: 'POST', body: { refresh_token: refreshToken } });
+      } catch {
+        /* la sesión local se cierra igual */
+      }
+    }
+    cerrar();
+    navegar('/');
+  }
+
+  function abrir(siguiente, sub) {
+    setModulo(siguiente);
+    if (sub) setPestana(sub);
+    setMenu(false);
+    setConsulta('');
+    setAvisosAbiertos(false);
+  }
+
   if (!usuario) {
     return (
       <div className="pagina estrecha">
+        <MarcaPortal />
         <h1>Panel</h1>
         <p>Un solo ingreso para turismo, transporte y taxis.</p>
         <Link className="btn btn-pino" to="/ingresar?siguiente=/admin" aria-label="Ingresar al panel">Ingresar</Link>
@@ -217,67 +319,127 @@ export default function Admin() {
     );
   }
 
-  if (!modulos.length) {
+  if (!puede.turismo && !puede.transporte && !puede.taxi) {
     return (
       <div className="pagina estrecha">
+        <MarcaPortal />
         <h1>Panel</h1>
         <p className="aviso" role="alert">Esta cuenta no administra un módulo.</p>
       </div>
     );
   }
 
-  const etiquetas = { resumen: 'Resumen', turismo: 'Portal turismo', transporte: 'Transporte', taxi: 'Taxis' };
-  const subtransporte = [
-    ['operacion', 'Viajes'],
-    ['pagos', 'Pagos'],
-    ['flota', 'Flota'],
-    ['facturas', 'Facturas'],
-    ['emisor', 'Emisor SRI'],
-    ['blog', 'Noticias'],
-    ['anuncios', 'Promos'],
-    ['galeria', 'Galería'],
+  const entradas = [
+    { id: 'resumen', modulo: 'resumen', etiqueta: 'Resumen' },
+    ...grupos.flatMap((grupo) => grupo.items),
   ];
+  const coincidencias = consulta.trim()
+    ? entradas.filter((item) => item.etiqueta.toLowerCase().includes(consulta.trim().toLowerCase()))
+    : [];
+  const titulo = entradas.find((item) => (
+    item.modulo === modulo && (item.pestana ? item.pestana === pestana : modulo !== 'transporte' && modulo !== 'turismo')
+  ))?.etiqueta || (modulo === 'resumen' ? 'Resumen' : 'Panel');
+  const iniciales = `${usuario.nombre?.[0] || ''}${usuario.apellido?.[0] || ''}`.toUpperCase();
+  const iconoSolo = colapsado && !menu;
+
+  function esActivo(item) {
+    if (item.modulo === 'resumen') return modulo === 'resumen';
+    if (item.pestana) return modulo === item.modulo && pestana === item.pestana;
+    return modulo === item.modulo && !item.pestana;
+  }
 
   return (
-    <div className="dashboard">
+    <div className={`saas${oscuro ? ' oscuro' : ''}${colapsado ? ' colapsado' : ''}`}>
       {menu && <button type="button" className="drawer-fondo" aria-label="Cerrar módulos" onClick={() => setMenu(false)} />}
-      <aside className={menu ? 'dash-lado abierto' : 'dash-lado'} aria-label="Módulos del panel">
-        <p className="sobrelinea">Panel</p>
-        {modulos.map((id) => (
-          <button key={id} type="button" className={modulo === id ? 'activo' : ''} onClick={() => { setModulo(id); setMenu(false); }} aria-label={`Abrir ${etiquetas[id]}`}>
-            {etiquetas[id]}
+      <aside className={menu ? 'saas-lado abierto' : 'saas-lado'} aria-label="Módulos del panel">
+        <div className="saas-marca">
+          <Link to="/" aria-label="La Maná Recorres, inicio">
+            <LogoRecorres variante={iconoSolo ? 'isotipo' : 'horizontal'} clara decorativo />
+          </Link>
+          <button type="button" className="saas-colapsar" onClick={() => setColapsado((valor) => !valor)} aria-label={colapsado ? 'Expandir menú lateral' : 'Contraer menú lateral'}>
+            <PanelLeft size={20} aria-hidden="true" />
           </button>
-        ))}
-      </aside>
-      <div className="dash-cuerpo">
-      <button type="button" className="btn btn-fantasma dash-abrir" onClick={() => setMenu(true)} aria-label="Abrir módulos del panel">Módulos</button>
-      <h1>{etiquetas[modulo]}</h1>
-      {modulo === 'resumen' && (
-        <div className="kpis" aria-label="Indicadores">
-          <article><strong>{formatearPesos(kpis?.transporte?.ventas_hoy || 0)}</strong><span>Ventas de boletos hoy</span></article>
-          <article><strong>{kpis?.transporte?.viajes_hoy ?? '—'}</strong><span>Viajes del día</span></article>
-          <article><strong>{kpis?.transporte ? `${Math.round(kpis.transporte.ocupacion * 100)} %` : '—'}</strong><span>Ocupación</span></article>
-          <article><strong>{kpis?.turismo?.mensajes ?? '—'}</strong><span>Mensajes</span></article>
-          <article><strong>{kpis?.turismo?.fichas ?? '—'}</strong><span>Fichas turísticas</span></article>
-          <article><strong>{kpis?.turismo?.eventos_proximos ?? '—'}</strong><span>Eventos próximos</span></article>
-          <article><strong>{kpis?.taxi?.viajes_hoy ?? '—'}</strong><span>Viajes de taxi hoy</span></article>
         </div>
-      )}
-      {modulo === 'turismo' && (
-        <div className="filtros" role="tablist" aria-label="Portal turismo">
-          <button type="button" className={pestana === 'turismo' ? 'activo' : ''} onClick={() => setPestana('turismo')} aria-label="Abrir fichas">Fichas y agenda</button>
-          <button type="button" className={pestana === 'portada' ? 'activo' : ''} onClick={() => setPestana('portada')} aria-label="Abrir portada">Portada</button>
-        </div>
-      )}
-      {modulo === 'transporte' && (
-        <div className="filtros" role="tablist" aria-label="Transporte">
-          {subtransporte.map(([id, etiqueta]) => (
-            <button key={id} type="button" className={pestana === id ? 'activo' : ''} onClick={() => setPestana(id)} aria-label={`Abrir ${etiqueta}`}>{etiqueta}</button>
+        <nav className="saas-nav">
+          <button type="button" className={modulo === 'resumen' ? 'activo' : ''} onClick={() => abrir('resumen')} aria-label="Abrir resumen">
+            <LayoutDashboard size={20} strokeWidth={1.75} aria-hidden="true" />
+            <span className="saas-etiqueta">Resumen</span>
+          </button>
+          <button type="button" className="saas-tema-lado" onClick={() => setOscuro((valor) => !valor)} aria-pressed={oscuro} aria-label={oscuro ? 'Usar modo claro' : 'Usar modo oscuro'}>
+            {oscuro ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
+            <span className="saas-etiqueta">{oscuro ? 'Modo claro' : 'Modo oscuro'}</span>
+          </button>
+          {grupos.map((grupo) => (
+            <div key={grupo.id} className="saas-grupo">
+              <p className="saas-grupo-titulo"><grupo.Icono size={14} aria-hidden="true" /> <span>{grupo.etiqueta}</span></p>
+              {grupo.items.map((item) => (
+                <button key={item.id} type="button" className={esActivo(item) ? 'activo' : ''} onClick={() => abrir(item.modulo, item.pestana)} aria-label={`Abrir ${item.etiqueta}`}>
+                  <item.Icono size={20} strokeWidth={1.75} aria-hidden="true" />
+                  <span className="saas-etiqueta">{item.etiqueta}</span>
+                </button>
+              ))}
+            </div>
           ))}
+        </nav>
+      </aside>
+      <div className="saas-principal">
+      <header className="saas-top">
+        <button type="button" className="btn btn-fantasma saas-abrir" onClick={() => setMenu(true)} aria-label="Abrir módulos del panel">
+          <PanelLeft size={18} aria-hidden="true" /> <span>Módulos</span>
+        </button>
+        <form className="saas-buscar" role="search" onSubmit={(evento) => { evento.preventDefault(); if (coincidencias[0]) abrir(coincidencias[0].modulo, coincidencias[0].pestana); }}>
+          <Search size={18} aria-hidden="true" />
+          <input value={consulta} onChange={(evento) => setConsulta(evento.target.value)} placeholder="Buscar módulo" aria-label="Buscar en el panel" />
+          {consulta.trim() && (
+            <div className="saas-resultados">
+              {coincidencias.length ? coincidencias.map((item) => (
+                <button key={item.id} type="button" onClick={() => abrir(item.modulo, item.pestana)}>{item.etiqueta}</button>
+              )) : <p>Sin módulos con ese nombre.</p>}
+            </div>
+          )}
+        </form>
+        <button type="button" className="btn btn-fantasma saas-icono saas-tema" onClick={() => setOscuro((valor) => !valor)} aria-pressed={oscuro} aria-label={oscuro ? 'Usar modo claro' : 'Usar modo oscuro'}>
+          {oscuro ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+        </button>
+        <div className="saas-avisos">
+          <button type="button" className="btn btn-fantasma saas-icono" aria-expanded={avisosAbiertos} aria-label="Notificaciones" onClick={() => setAvisosAbiertos((valor) => !valor)}>
+            <Bell size={18} aria-hidden="true" />
+            {tablero?.avisos?.length ? <span className="saas-campana">{tablero.avisos.length}</span> : null}
+          </button>
+          {avisosAbiertos && (
+            <div className="saas-resultados" role="status">
+              {(tablero?.avisos || []).map((aviso) => <p key={aviso.id}>{aviso.texto}</p>)}
+              {!tablero?.avisos?.length && <p>Sin avisos nuevos.</p>}
+            </div>
+          )}
         </div>
-      )}
+        <div className="saas-usuario">
+          <span className="saas-avatar" aria-hidden="true">{iniciales}</span>
+          <span className="saas-quien">
+            <strong>{usuario.nombre}</strong>
+            <small>{ROLES[usuario.rol] || usuario.rol}</small>
+          </span>
+        </div>
+        <button type="button" className="btn btn-fantasma saas-icono" onClick={salir} aria-label="Cerrar sesión">
+          <LogOut size={18} aria-hidden="true" />
+        </button>
+      </header>
+      <div className="saas-contenido">
+      <h1>{titulo}</h1>
       {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
       {error && <p className="aviso" role="alert">{error}</p>}
+      {modulo === 'resumen' && (
+        <PanelResumen
+          tablero={tablero}
+          cargando={cargandoTablero}
+          error={errorTablero}
+          rango={rango}
+          onRango={setRango}
+          onConsultar={consultarTablero}
+          onIr={abrir}
+          puede={puede}
+        />
+      )}
 
       {modulo === 'turismo' && pestana === 'portada' && <AdminPortada token={token} />}
       {modulo === 'turismo' && pestana !== 'portada' && <AdminTurismo token={token} />}
@@ -423,6 +585,7 @@ export default function Admin() {
       </section>
       </>
       )}
+      </div>
       </div>
     </div>
   );

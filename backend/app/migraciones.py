@@ -33,6 +33,7 @@ async def asegurar_esquema() -> None:
     await _ambito_portada()
     await _aplicar_archivo(SQL_TURISMO)
     await _aplicar_archivo(SQL_PORTAL_TAXI)
+    await _ejemplo_taxi()
 
 
 def _sentencias(contenido: str) -> list[str]:
@@ -99,6 +100,16 @@ async def _ambito_portada() -> None:
             OR titulo LIKE '%unidad naranja%'
         """
     )
+
+
+async def _ejemplo_taxi() -> None:
+    async with engine.connect() as conexion:
+        tablas = (await conexion.execute(text("SHOW TABLES LIKE 'taxi_viajes'"))).first()
+        if tablas is None:
+            return
+        columnas = (await conexion.execute(text("SHOW COLUMNS FROM taxi_viajes"))).all()
+    if "ejemplo" not in {fila[0] for fila in columnas}:
+        await _ejecutar("ALTER TABLE taxi_viajes ADD COLUMN ejemplo TINYINT(1) NOT NULL DEFAULT 0 AFTER comentario")
 
 
 async def _aplicar_archivo(ruta: Path) -> None:

@@ -19,7 +19,7 @@ export default function BlogDetalle() {
 
   return (
     <article className="pagina estrecha-larga">
-      <p className="miga"><Link to="/transporte/noticias">Noticias</Link> / {nota.categoria}</p>
+      <p className="miga"><Link to="/">Inicio</Link> / <Link to="/transporte/noticias">Noticias</Link> / {nota.categoria}</p>
       <p className="sobrelinea">{formatearFechaHora(nota.publicado_en)}</p>
       <h1>{nota.titulo}</h1>
       <p className="lead">{nota.resumen}</p>

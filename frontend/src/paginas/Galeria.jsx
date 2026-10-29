@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
 import Lightbox from '../componentes/Lightbox';
 import { EncabezadoPagina, EstadoVacio } from '../ui/ui';
@@ -34,7 +35,7 @@ export default function Galeria() {
 
   return (
     <>
-      <EncabezadoPagina kicker="Transporte" titulo="La cooperativa en el camino." bajada="Buses, destinos y terminales." imagen="/bus-lamana.jpg" />
+      <EncabezadoPagina kicker="Transporte" titulo="La cooperativa en el camino." bajada="Buses, destinos y terminales." imagen="/bus-lamana.jpg" miga={<><Link to="/">Inicio</Link> / Galería</>} />
     <div className="pagina">
       <div className="filtros" role="tablist" aria-label="Filtrar galería">
         {FILTROS.map(([valor, etiqueta]) => (

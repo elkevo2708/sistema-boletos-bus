@@ -16,7 +16,7 @@ export default function Blog() {
 
   return (
     <>
-      <EncabezadoPagina kicker="Transporte" titulo="Lo que se mueve en la ruta." bajada="Noticias y destinos de la cooperativa." imagen="/bus-lamana.jpg" />
+      <EncabezadoPagina kicker="Transporte" titulo="Lo que se mueve en la ruta." bajada="Noticias y destinos de la cooperativa." imagen="/bus-lamana.jpg" miga={<><Link to="/">Inicio</Link> / Noticias</>} />
     <div className="pagina">
       <div className="filtros" role="tablist" aria-label="Filtrar publicaciones">
         {[
