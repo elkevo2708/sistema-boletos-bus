@@ -7,6 +7,7 @@ import MarcaPortal from './MarcaPortal';
 
 export default function PortalLayout() {
   const [menu, setMenu] = useState(false);
+  const [pie, setPie] = useState('Guía del cantón La Maná, en el subtrópico de Cotopaxi. Los textos se editan en el panel.');
   const [conteos, setConteos] = useState({});
   const [consulta, setConsulta] = useState('');
   const [idioma, setIdioma] = useState(() => localStorage.getItem('lamana_idioma') || 'es');
@@ -15,6 +16,12 @@ export default function PortalLayout() {
   const textos = IDIOMAS[idioma] || IDIOMAS.es;
 
   useEffect(() => {
+    solicitar('/textos?espacio=portal').then((datos) => {
+      if (datos['portal.pie.frase']) setPie(datos['portal.pie.frase']);
+    }).catch(() => {});
+    solicitar('/textos?espacio=sitio').then((datos) => {
+      if (datos['sitio.nombre']) document.title = datos['sitio.nombre'];
+    }).catch(() => {});
     solicitar('/turismo/resumen')
       .then((data) => setConteos(data.conteos || {}))
       .catch(() => {});
@@ -136,7 +143,7 @@ export default function PortalLayout() {
         <div className="contenedor portal-pie-grid">
           <div>
             <MarcaPortal clara />
-            <p>Guía del cantón La Maná, en el subtrópico de Cotopaxi. Los textos se editan en el panel.</p>
+            <p>{pie}</p>
           </div>
           <div>
             <p className="pie-titulo">Recorrer</p>

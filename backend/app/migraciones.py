@@ -34,6 +34,8 @@ async def asegurar_esquema() -> None:
     await _aplicar_archivo(SQL_TURISMO)
     await _aplicar_archivo(SQL_PORTAL_TAXI)
     await _ejemplo_taxi()
+    from app.textos_semilla import asegurar_textos
+    await asegurar_textos()
 
 
 def _sentencias(contenido: str) -> list[str]:

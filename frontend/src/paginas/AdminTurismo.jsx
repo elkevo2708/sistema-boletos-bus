@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { enviarFormulario, solicitar } from '../api';
+import { EstadoVacio, Insignia } from '../ui/ui';
 
 const TIPOS = ['atractivo', 'gastronomia', 'hospedaje', 'actividad', 'ruta', 'parroquia', 'guia', 'emprendimiento', 'directorio', 'evento'];
 
@@ -18,8 +19,10 @@ const FICHA_VACIA = {
   activo: true,
 };
 
-export default function AdminTurismo({ token }) {
-  const [seccion, setSeccion] = useState('fichas');
+export default function AdminTurismo({ token, vista = 'fichas', tipo = '', fijo = false }) {
+  const [seccion, setSeccion] = useState(vista);
+  const [busqueda, setBusqueda] = useState('');
+  const [sucio, setSucio] = useState(false);
   const [categorias, setCategorias] = useState([]);
   const [fichas, setFichas] = useState([]);
   const [eventos, setEventos] = useState([]);
@@ -52,6 +55,21 @@ export default function AdminTurismo({ token }) {
     cargar().catch((err) => setError(err.message));
   }, [token]);
 
+  useEffect(() => {
+    setSeccion(vista);
+    if (tipo) setFicha((actual) => ({ ...actual, tipo, categoria_id: '' }));
+  }, [vista, tipo]);
+
+  useEffect(() => {
+    function salir(evento) {
+      if (!sucio) return;
+      evento.preventDefault();
+      evento.returnValue = '';
+    }
+    window.addEventListener('beforeunload', salir);
+    return () => window.removeEventListener('beforeunload', salir);
+  }, [sucio]);
+
   function aviso(texto) {
     setError('');
     setMensaje(texto);
@@ -64,6 +82,7 @@ export default function AdminTurismo({ token }) {
         method: 'POST', token, body: { ...categoria, orden: Number(categoria.orden) || 0 },
       });
       aviso('Categoría guardada.');
+      setSucio(false);
       setCategoria({ tipo: 'atractivo', nombre: '', resumen: '', orden: 0, activo: true });
       await cargar();
     } catch (err) {
@@ -157,8 +176,14 @@ export default function AdminTurismo({ token }) {
 
   const categoriasDelTipo = categorias.filter((item) => item.tipo === ficha.tipo);
 
+  const fichasVisibles = fichas
+    .filter((item) => !tipo || item.tipo === tipo)
+    .filter((item) => item.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()));
+
   return (
     <div>
+      {mensaje && <p className="toast" role="status">{mensaje}</p>}
+      {!fijo && (
       <div className="filtros" role="tablist" aria-label="Turismo">
         {[
           ['fichas', 'Fichas'],
@@ -170,7 +195,7 @@ export default function AdminTurismo({ token }) {
           <button key={id} type="button" className={seccion === id ? 'activo' : ''} onClick={() => setSeccion(id)} aria-label={`Abrir ${etiqueta}`}>{etiqueta}</button>
         ))}
       </div>
-      {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
+      )}
       {error && <p className="aviso" role="alert">{error}</p>}
 
       {seccion === 'categorias' && (
@@ -203,7 +228,7 @@ export default function AdminTurismo({ token }) {
           <form className="panel-form" noValidate onSubmit={guardarFicha}>
             <h2>{ficha.id ? 'Editar ficha' : 'Nueva ficha'}</h2>
             <label>Tipo
-              <select value={ficha.tipo} onChange={(e) => setFicha({ ...ficha, tipo: e.target.value, categoria_id: '' })} aria-label="Tipo de ficha">
+              <select value={ficha.tipo} disabled={Boolean(tipo)} onChange={(e) => setFicha({ ...ficha, tipo: e.target.value, categoria_id: '' })} aria-label="Tipo de ficha">
                 {TIPOS.filter((tipo) => tipo !== 'evento').map((tipo) => <option key={tipo}>{tipo}</option>)}
               </select>
             </label>
@@ -213,8 +238,14 @@ export default function AdminTurismo({ token }) {
                 {categoriasDelTipo.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
               </select>
             </label>
-            <label>Nombre<input value={ficha.nombre} onChange={(e) => setFicha({ ...ficha, nombre: e.target.value })} aria-label="Nombre de la ficha" /></label>
-            <label>Resumen<input value={ficha.resumen} onChange={(e) => setFicha({ ...ficha, resumen: e.target.value })} aria-label="Resumen de la ficha" /></label>
+            <label>Nombre
+              <input value={ficha.nombre} maxLength={160} onChange={(e) => { setSucio(true); setFicha({ ...ficha, nombre: e.target.value }); }} aria-label="Nombre de la ficha" placeholder="Por ejemplo: Río San Pablo" />
+            </label>
+            <p className="meta">Es el título de la tarjeta y de la ficha. {ficha.nombre.length}/160</p>
+            <label>Resumen
+              <input value={ficha.resumen} maxLength={400} onChange={(e) => { setSucio(true); setFicha({ ...ficha, resumen: e.target.value }); }} aria-label="Resumen de la ficha" placeholder="Una frase que se lee en la tarjeta" />
+            </label>
+            <p className="meta">Sale en la tarjeta, antes de abrir la ficha. {ficha.resumen.length}/400</p>
             <label>Texto<textarea value={ficha.cuerpo} onChange={(e) => setFicha({ ...ficha, cuerpo: e.target.value })} aria-label="Texto de la ficha" rows={5} /></label>
             <label>Zona<input value={ficha.zona} onChange={(e) => setFicha({ ...ficha, zona: e.target.value })} aria-label="Zona" /></label>
             <label>Imagen actual<input value={ficha.imagen || ''} onChange={(e) => setFicha({ ...ficha, imagen: e.target.value })} aria-label="Ruta de la imagen" /></label>
@@ -228,11 +259,18 @@ export default function AdminTurismo({ token }) {
             </label>
             <button type="submit" className="btn btn-pino" aria-label="Guardar ficha">Guardar ficha</button>
           </form>
+          <label>Buscar en la lista
+            <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Nombre de la ficha" aria-label="Buscar ficha" />
+          </label>
+          {fichasVisibles.length === 0 && (
+            <EstadoVacio titulo="Todavía no hay fichas" texto="Completa el formulario de la izquierda para publicar la primera." />
+          )}
           <ul className="lista-admin">
-            {fichas.map((item) => (
+            {fichasVisibles.map((item) => (
               <li key={item.id}>
                 <strong>{item.nombre}</strong>
-                <span className="meta">{item.tipo} · {item.activo ? 'activa' : 'oculta'}</span>
+                <Insignia tono={item.activo ? 'verde' : 'amarillo'}>{item.activo ? 'Publicado' : 'Oculto'}</Insignia>
+                <span className="meta">{item.tipo}</span>
                 <button type="button" onClick={() => setFicha({ ...item, categoria_id: item.categoria_id || '', imagen: item.imagen || '' })} aria-label={`Editar ${item.nombre}`}>Editar</button>
                 <button type="button" onClick={() => quitar(`/admin/turismo/fichas/${item.id}`, item.nombre)} aria-label={`Quitar ${item.nombre}`}>Quitar</button>
               </li>

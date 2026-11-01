@@ -702,6 +702,40 @@ tfoot th { font-size: 1.05rem; }
   .asiento { width: 42px; height: 42px; font-size: 0.85rem; }
 }
 
+.inicio-espacios { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); }
+.espacio-tarjeta {
+  display: grid; align-content: start; gap: var(--s-2); text-align: left; min-height: 180px;
+  padding: var(--s-5); border-radius: var(--r-lg); border: 1px solid var(--linea); background: #fff;
+  cursor: pointer; color: var(--tinta); font: inherit;
+}
+.espacio-tarjeta strong { font-family: var(--display); font-size: 1.25rem; color: var(--marino); }
+.espacio-tarjeta.resumen { grid-column: 1 / -1; border-top: 6px solid var(--marino); }
+.espacio-tarjeta.portal { border-top: 6px solid var(--turquesa); }
+.espacio-tarjeta.transporte { border-top: 6px solid var(--verde); }
+.espacio-tarjeta.taxi { border-top: 6px solid var(--amarillo); }
+.espacio-tarjeta:hover { box-shadow: var(--sombra); }
+.saas-espacios { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.saas-espacios button {
+  min-height: 44px; border: 1px solid var(--linea); background: #fff; border-radius: var(--r-full);
+  padding: 0 var(--s-3); font: inherit; font-weight: 700; cursor: pointer; color: var(--marino);
+}
+.saas-espacios button.activo { background: var(--marino); color: #fff; }
+.saas.acento-transporte .saas-espacios button.activo { background: var(--verde-oscuro); }
+.saas.acento-taxi .saas-espacios button.activo { background: #8a6a00; }
+.saas.acento-portal .saas-lado { box-shadow: inset 4px 0 0 var(--turquesa); }
+.saas.acento-transporte .saas-lado { box-shadow: inset 4px 0 0 var(--verde); }
+.saas.acento-taxi .saas-lado { box-shadow: inset 4px 0 0 var(--amarillo); }
+.marco-edicion { display: grid; gap: var(--s-4); }
+.marco-cabeza { display: flex; justify-content: space-between; gap: var(--s-4); align-items: flex-start; }
+.marco-edicion h2 { margin: 0; }
+.vista-mini { border: 1px dashed var(--linea); border-radius: var(--r-md); padding: var(--s-3); background: var(--papel); }
+.toast {
+  position: fixed; right: var(--s-4); bottom: var(--s-4); z-index: var(--z-toast);
+  background: var(--marino); color: #fff; padding: var(--s-3) var(--s-4); border-radius: var(--r-md);
+  box-shadow: var(--sombra); max-width: min(360px, calc(100% - 2rem));
+}
+.editor-textos { display: grid; gap: var(--s-4); }
+
 .saas { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 100dvh; background: var(--papel); color: var(--tinta); }
 .saas.colapsado { grid-template-columns: 84px minmax(0, 1fr); }
 .saas-lado {
@@ -785,10 +819,13 @@ tfoot th { font-size: 1.05rem; }
   .saas-graficos, .saas-dos { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
+  .inicio-espacios, .marco-cabeza { grid-template-columns: 1fr; display: grid; }
   .saas, .saas.colapsado { display: block; }
   .saas-abrir { display: inline-flex; }
   .saas-abrir span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .saas-top { gap: var(--s-2); padding: var(--s-2) var(--s-3); }
+  .saas-top { gap: var(--s-2); padding: var(--s-2) var(--s-3); flex-wrap: wrap; }
+  .saas-espacios { flex: 1 1 100%; }
+  .saas-buscar { flex: 1 1 140px; }
   .saas-top .saas-icono, .saas-top .saas-abrir { padding: 0; width: 44px; min-width: 44px; flex: none; }
   .saas-top .saas-tema { display: none; }
   .saas-nav .saas-tema-lado { display: flex; }

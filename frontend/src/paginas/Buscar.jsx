@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
 import HeroPortada from '../componentes/HeroPortada';
 import { fechaBogota, formatearDia, formatearFechaHora, formatearDinero } from '../formato';
+import { useTextos } from '../textos';
 
 const RUTAS = [
   ['La Maná', 'Quevedo', 'Unos 75 minutos por la vía plana hacia Los Ríos.'],
@@ -28,6 +29,7 @@ const SERVICIOS = [
 ];
 
 export default function Buscar() {
+  const t = useTextos('transporte');
   const [ciudades, setCiudades] = useState([]);
   const [origen, setOrigen] = useState('');
   const [destino, setDestino] = useState('');
@@ -362,7 +364,7 @@ export default function Buscar() {
           <p className="sobrelinea">Boleto en línea</p>
           <h2>Cómo comprar el pasaje.</h2>
           <ol>
-            <li><strong>1</strong><span>Elige origen, destino y fecha.</span></li>
+            <li><strong>1</strong><span>{t('transporte.intro', 'Elige origen, destino y fecha.')}</span></li>
             <li><strong>2</strong><span>Marca el asiento en el mapa del bus.</span></li>
             <li><strong>3</strong><span>Paga con DeUna!, tarjeta o PayPhone.</span></li>
             <li><strong>4</strong><span>Descarga el QR y preséntalo al abordar.</span></li>

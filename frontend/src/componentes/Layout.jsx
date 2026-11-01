@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { solicitar } from '../api';
 import { useAuth } from '../contexto/AuthContext';
@@ -9,6 +9,7 @@ export default function Layout() {
   const { usuario, refreshToken, cerrar } = useAuth();
   const navegar = useNavigate();
   const [menu, setMenu] = useState(false);
+  const [pie, setPie] = useState('Salidas diarias desde La Maná hacia la costa y la sierra. El asiento se elige antes de pagar.');
 
   async function salir() {
     if (refreshToken) {
@@ -21,6 +22,12 @@ export default function Layout() {
     cerrar();
     navegar('/');
   }
+
+  useEffect(() => {
+    solicitar('/textos?espacio=transporte')
+      .then((datos) => { if (datos['transporte.pie.frase']) setPie(datos['transporte.pie.frase']); })
+      .catch(() => {});
+  }, []);
 
   function cerrarMenu() {
     setMenu(false);
@@ -86,7 +93,7 @@ export default function Layout() {
       <footer className="pie">
         <div>
           <img className="logo-pie" src="/logo-lamana.png" alt="Trans La Maná" />
-          <p>Salidas diarias desde La Maná hacia la costa y la sierra. El asiento se elige antes de pagar.</p>
+          <p>{pie}</p>
         </div>
         <div>
           <p className="pie-titulo">Enlaces</p>

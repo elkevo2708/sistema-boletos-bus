@@ -4,9 +4,11 @@ import { solicitar } from '../api';
 import HeroPortada from '../componentes/HeroPortada';
 import TarjetaTurismo from '../componentes/TarjetaTurismo';
 import { ICONOS_PRACTICOS, MENU_EXTRA } from '../iconosTurismo';
+import { useTextos } from '../textos';
 import { Seccion } from '../ui/ui';
 
 export default function PortalInicio() {
+  const t = useTextos('portal');
   const [resumen, setResumen] = useState(null);
   const [parroquias, setParroquias] = useState([]);
   const [comida, setComida] = useState([]);
@@ -24,7 +26,7 @@ export default function PortalInicio() {
   return (
     <>
       <HeroPortada ambito="portal" />
-      <Seccion kicker="Cantón La Maná" titulo="Qué puedes recorrer">
+      <Seccion kicker="Cantón La Maná" titulo={t('portal.recorrer.titulo', 'Qué puedes recorrer')}>
         {resumen ? (
           <div className="rejilla-turismo">
             {(resumen.destacados || []).map((ficha) => <TarjetaTurismo key={`${ficha.tipo}-${ficha.id}`} ficha={ficha} />)}
@@ -36,19 +38,19 @@ export default function PortalInicio() {
         )}
       </Seccion>
 
-      <Seccion titulo="Qué debes saber sobre La Maná" clara>
+      <Seccion titulo={t('portal.saber.titulo', 'Qué debes saber sobre La Maná')} clara>
         <div className="portal-saber">
           <article>
-            <h3>Dónde queda</h3>
-            <p>La Maná es un cantón de Cotopaxi en el piso cálido, entre la sierra y la llanura que sigue hacia Quevedo. No es el páramo del volcán: es subtrópico húmedo, de finca y de río.</p>
+            <h3>{t('portal.saber.donde.titulo', 'Dónde queda')}</h3>
+            <p>{t('portal.saber.donde.texto', 'La Maná es un cantón de Cotopaxi en el piso cálido, entre la sierra y la llanura que sigue hacia Quevedo. No es el páramo del volcán: es subtrópico húmedo, de finca y de río.')}</p>
           </article>
           <article>
-            <h3>Cómo se divide</h3>
-            <p>La cabecera lleva el nombre del cantón. Las parroquias rurales son Guasaganda, Pucayacu y El Carmen. Cada una tiene su ficha, editable desde taquilla.</p>
+            <h3>{t('portal.saber.divide.titulo', 'Cómo se divide')}</h3>
+            <p>{t('portal.saber.divide.texto', 'La cabecera lleva el nombre del cantón. Las parroquias rurales son Guasaganda, Pucayacu y El Carmen. Cada una tiene su ficha, editable desde el panel.')}</p>
           </article>
           <article>
-            <h3>Qué hacer</h3>
-            <p>Bajar al río San Pablo, caminar hacia cascadas como Zapanal, Tilipulo o Manguilita, y ver cacao o banano en una finca que acepte visita. El bus de la cooperativa está aparte, en Transporte.</p>
+            <h3>{t('portal.saber.hacer.titulo', 'Qué hacer')}</h3>
+            <p>{t('portal.saber.hacer.texto', 'Bajar al río San Pablo, caminar hacia cascadas como Zapanal, Tilipulo o Manguilita, y ver cacao o banano en una finca que acepte visita. El bus de la cooperativa está aparte, en Transporte.')}</p>
           </article>
         </div>
         <ul className="portal-practico">
@@ -61,19 +63,19 @@ export default function PortalInicio() {
         </ul>
       </Seccion>
 
-      <Seccion titulo="Para quién es el viaje">
+      <Seccion titulo={t('portal.perfiles.titulo', 'Para quién es el viaje')}>
         <div className="portal-perfiles">
           <article>
-            <h3>Quien busca río y sombra</h3>
-            <p>La tarde en una orilla del San Pablo alcanza si el plan es simple. Mire el caudal antes de entrar al agua.</p>
+            <h3>{t('portal.perfiles.rio.titulo', 'Quien busca río y sombra')}</h3>
+            <p>{t('portal.perfiles.rio.texto', 'La tarde en una orilla del San Pablo alcanza si el plan es simple. Mire el caudal antes de entrar al agua.')}</p>
           </article>
           <article>
-            <h3>Quien camina</h3>
-            <p>Las cascadas del entorno piden calzado cerrado y tiempo de sobra. No hay aquí un horario único de sendero.</p>
+            <h3>{t('portal.perfiles.camina.titulo', 'Quien camina')}</h3>
+            <p>{t('portal.perfiles.camina.texto', 'Las cascadas del entorno piden calzado cerrado y tiempo de sobra. No hay aquí un horario único de sendero.')}</p>
           </article>
           <article>
-            <h3>Quien viene de paso</h3>
-            <p>La cabecera sirve de escala entre Latacunga y Quevedo. El pasaje se compra en Transporte, con el asiento ya elegido.</p>
+            <h3>{t('portal.perfiles.paso.titulo', 'Quien viene de paso')}</h3>
+            <p>{t('portal.perfiles.paso.texto', 'La cabecera sirve de escala entre Latacunga y Quevedo. El pasaje se compra en Transporte, con el asiento ya elegido.')}</p>
           </article>
         </div>
       </Seccion>

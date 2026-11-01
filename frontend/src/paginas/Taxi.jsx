@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { solicitar } from '../api';
+import { useTextos } from '../textos';
 import { useAuth } from '../contexto/AuthContext';
 
 const CENTRO = [-0.9406, -79.2344];
@@ -18,6 +19,7 @@ function icono(color) {
 
 export default function Taxi() {
   const { token, usuario } = useAuth();
+  const t = useTextos('taxi');
   const caja = useRef(null);
   const mapa = useRef(null);
   const marcas = useRef([]);
@@ -166,15 +168,15 @@ export default function Taxi() {
       <div ref={caja} className="taxi-mapa" role="application" aria-label="Mapa de taxis en La Maná" />
       <aside className="taxi-panel">
         <span className="taxi-asa" aria-hidden="true" />
-        <p className="sobrelinea">Taxi · La Maná</p>
-        <h1>Pide un taxi</h1>
+        <p className="sobrelinea">{t('taxi.kicker', 'Taxi · La Maná')}</p>
+        <h1>{t('taxi.titulo', 'Pide un taxi')}</h1>
         {!usuario && (
           <p>Para ver unidades y pedir un viaje, <Link to="/ingresar?siguiente=/taxi">ingresa</Link>.</p>
         )}
         {usuario && (
           <>
             <button type="button" className="btn btn-portal" onClick={ubicar}>Usar mi ubicación</button>
-            <p className="meta">Si el GPS no responde, arrastra el pin azul. El centro del mapa es la cabecera, cerca de -0.94, -79.23.</p>
+            <p className="meta">{t('taxi.ayuda', 'Si el GPS no responde, arrastra el pin azul. El centro del mapa es la cabecera, cerca de -0.94, -79.23.')}</p>
             {cercano ? (
               <p className="taxi-cerca">
                 Más cercano: unidad <strong>{cercano.unidad}</strong>, placa {cercano.placa}, a {cercano.distancia_km} km · unos {cercano.eta_min} min.

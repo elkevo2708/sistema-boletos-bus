@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Bell, Bus, Car, Compass, CreditCard, FileText, Images, LayoutDashboard, LogOut,
-  Map, Megaphone, Moon, Newspaper, PanelLeft, Route, Search, Settings, Sun, Image as ImagenIcon,
+  Mail, Map, Megaphone, Moon, Newspaper, PanelLeft, Route, Search, Settings, Sun, Image as ImagenIcon,
 } from 'lucide-react';
 import { solicitar } from '../api';
 import MarcaPortal from '../componentes/MarcaPortal';
@@ -16,7 +16,10 @@ import AdminPagos from './AdminPagos';
 import AdminPortada from './AdminPortada';
 import AdminTaxis from './AdminTaxis';
 import AdminTurismo from './AdminTurismo';
+import EditorTextos from './EditorTextos';
+import InicioEspacios from './InicioEspacios';
 import PanelResumen from './PanelResumen';
+import { MarcoEdicion } from '../ui/MarcoEdicion';
 
 const ROLES = {
   administrador: 'Administración',
@@ -25,47 +28,47 @@ const ROLES = {
   operador_taxi: 'Operador de taxis',
 };
 
-function gruposDe(puede) {
-  const grupos = [];
-  if (puede.turismo) {
-    grupos.push({
-      id: 'turismo',
-      etiqueta: 'Portal turismo',
-      Icono: Compass,
-      items: [
-        { id: 'fichas', modulo: 'turismo', pestana: 'turismo', etiqueta: 'Fichas y agenda', Icono: Map },
-      ],
-    });
-  }
-  if (puede.transporte) {
-    grupos.push({
-      id: 'transporte',
-      etiqueta: 'Transporte',
-      Icono: Bus,
-      items: [
-        { id: 'operacion', modulo: 'transporte', pestana: 'operacion', etiqueta: 'Viajes', Icono: Route },
-        { id: 'pagos', modulo: 'transporte', pestana: 'pagos', etiqueta: 'Pagos', Icono: CreditCard },
-        { id: 'flota', modulo: 'transporte', pestana: 'flota', etiqueta: 'Flota', Icono: Bus },
-        { id: 'facturas', modulo: 'transporte', pestana: 'facturas', etiqueta: 'Facturas', Icono: FileText },
-        { id: 'blog', modulo: 'transporte', pestana: 'blog', etiqueta: 'Noticias', Icono: Newspaper },
-        { id: 'anuncios', modulo: 'transporte', pestana: 'anuncios', etiqueta: 'Promociones', Icono: Megaphone },
-        { id: 'galeria', modulo: 'transporte', pestana: 'galeria', etiqueta: 'Galería', Icono: Images },
-      ],
-    });
-  }
-  if (puede.taxi) {
-    grupos.push({
-      id: 'taxi',
-      etiqueta: 'Taxis',
-      Icono: Car,
-      items: [{ id: 'taxi', modulo: 'taxi', etiqueta: 'Operación', Icono: Car }],
-    });
-  }
-  const config = [];
-  if (puede.turismo) config.push({ id: 'portada', modulo: 'turismo', pestana: 'portada', etiqueta: 'Portada', Icono: ImagenIcon });
-  if (puede.transporte) config.push({ id: 'emisor', modulo: 'transporte', pestana: 'emisor', etiqueta: 'Emisor SRI', Icono: Settings });
-  if (config.length) grupos.push({ id: 'config', etiqueta: 'Configuración', Icono: Settings, items: config });
-  return grupos;
+function ficha(id, etiqueta, ver, frase, aparece, Icono) {
+  return { id, etiqueta, ver, frase, aparece, Icono, titulo: etiqueta };
+}
+
+function menuDe(puede) {
+  return {
+    portal: puede.turismo ? [
+      ficha('textos', 'Textos del inicio', '/', 'Los títulos y párrafos que están escritos en la página de inicio.', 'Inicio del portal, debajo de la portada.', Compass),
+      ficha('sitio', 'Nombre del sitio', '/', 'El nombre que aparece en la pestaña del navegador.', 'La pestaña del navegador.', Settings),
+      ficha('portada', 'Portada', '/', 'Las fotos grandes de arriba de todo.', 'Lo primero que se ve al abrir el portal.', ImagenIcon),
+      ficha('atractivo', 'Atractivos', '/atractivos', 'Río, cascadas y pueblo.', 'Descubre y las tarjetas del inicio.', Map),
+      ficha('parroquia', 'Parroquias', '/parroquias', 'La cabecera y las parroquias rurales.', 'Página Parroquias.', Map),
+      ficha('gastronomia', 'Gastronomía', '/gastronomia', 'La mesa del subtrópico.', 'Página Gastronomía.', Map),
+      ficha('hospedaje', 'Hospedaje', '/hospedaje', 'Tipos de alojamiento.', 'Página Hospedaje.', Map),
+      ficha('actividad', 'Actividades', '/actividades', 'Caminata, río y bosque.', 'Página Vive.', Map),
+      ficha('ruta', 'Rutas del cantón', '/rutas', 'Recorridos de un día, no los buses.', 'Página Rutas del portal.', Route),
+      ficha('guia', 'Aprende', '/aprende', 'Cómo llegar y lo práctico.', 'Página Aprende.', Compass),
+      ficha('emprendimiento', 'Emprendimientos', '/emprendimientos', 'Fichas de negocios. Las de ejemplo siguen marcadas.', 'Página Emprendimientos.', Map),
+      ficha('directorio', 'Directorio', '/directorio', 'Servicios del cantón.', 'Página Directorio.', FileText),
+      ficha('agenda', 'Agenda', '/agenda', 'Fechas que se publican en el inicio.', 'Agenda y el bloque de fechas del inicio.', Newspaper),
+      ficha('galeria', 'Galería', '/galeria', 'Fotos del cantón.', 'Galería del portal.', Images),
+      ficha('mensajes', 'Mensajes', '/contacto', 'Lo que escribe la gente desde Contacto.', 'No se publica; solo lo ves tú.', Mail),
+      ficha('contacto', 'Datos de contacto', '/contacto', 'Correo, título y la frase del buzón.', 'Página Contacto y el pie.', Mail),
+    ] : [],
+    transporte: puede.transporte ? [
+      ficha('textos', 'Textos de la página', '/transporte', 'Frases de la búsqueda y del pie.', 'Página de boletos y su pie.', Bus),
+      ficha('portada', 'Portada', '/transporte', 'La foto grande de Transporte.', 'Arriba de la búsqueda de pasajes.', ImagenIcon),
+      ficha('operacion', 'Viajes y tarifas', '/transporte', 'Crear salidas y cambiar el precio de una ruta.', 'La búsqueda pública de pasajes.', Route),
+      ficha('flota', 'Buses', '/transporte', 'Unidades, asientos y estado.', 'El mapa de asientos de cada viaje.', Bus),
+      ficha('pagos', 'Métodos de pago', '/transporte', 'Activar DeUna, tarjeta o PayPhone.', 'El paso de pago del pasaje.', CreditCard),
+      ficha('facturas', 'Facturas', '/mis-facturas', 'Consultar y reenviar comprobantes.', 'Mis facturas, para quien compró.', FileText),
+      ficha('emisor', 'Emisor SRI', '/transporte', 'Datos de quien emite la factura.', 'El PDF y el XML del pasaje.', Settings),
+      ficha('blog', 'Noticias', '/transporte/noticias', 'Notas de la cooperativa.', 'Noticias de Transporte.', Newspaper),
+      ficha('anuncios', 'Aviso promocional', '/transporte', 'La ventana que sale al entrar.', 'Una ventana sobre Transporte.', Megaphone),
+      ficha('galeria', 'Galería', '/transporte/galeria', 'Fotos de buses y terminales.', 'Galería de Transporte.', Images),
+    ] : [],
+    taxi: puede.taxi ? [
+      ficha('textos', 'Textos de la página', '/taxi', 'El título y la ayuda del mapa.', 'La hoja de pedido en /taxi.', Car),
+      ficha('operacion', 'Compañías y tarifas', '/taxi', 'Arranque, kilómetro, minuto, mínima y recargo nocturno.', 'La cotización que ve quien pide el taxi. Las de ejemplo siguen marcadas.', Car),
+    ] : [],
+  };
 }
 
 export default function Admin() {
@@ -80,6 +83,8 @@ export default function Admin() {
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [modulo, setModulo] = useState('resumen');
+  const [espacio, setEspacio] = useState('inicio');
+  const [seccion, setSeccion] = useState('textos');
   const [menu, setMenu] = useState(false);
   const [pestana, setPestana] = useState('operacion');
   const [tablero, setTablero] = useState(null);
@@ -97,7 +102,8 @@ export default function Admin() {
     taxi: usuario?.rol === 'administrador' || usuario?.rol === 'operador_taxi',
   };
   const puedeTransporte = puede.transporte;
-  const grupos = useMemo(() => gruposDe(puede), [usuario?.rol]);
+  const menus = useMemo(() => menuDe(puede), [usuario?.rol]);
+  const menuActual = menus[espacio] || [];
   const carga = useRef(0);
 
   function recargarCatalogo() {
@@ -300,9 +306,11 @@ export default function Admin() {
     navegar('/');
   }
 
-  function abrir(siguiente, sub) {
-    setModulo(siguiente);
-    if (sub) setPestana(sub);
+  function ir(siguienteEspacio, siguienteSeccion = 'textos') {
+    setEspacio(siguienteEspacio);
+    setSeccion(siguienteSeccion);
+    setModulo(siguienteEspacio === 'portal' ? 'turismo' : siguienteEspacio);
+    setPestana(siguienteSeccion);
     setMenu(false);
     setConsulta('');
     setAvisosAbiertos(false);
@@ -330,26 +338,21 @@ export default function Admin() {
   }
 
   const entradas = [
-    { id: 'resumen', modulo: 'resumen', etiqueta: 'Resumen' },
-    ...grupos.flatMap((grupo) => grupo.items),
+    { id: 'inicio', etiqueta: 'Inicio', espacio: 'inicio' },
+    { id: 'resumen', etiqueta: 'Resumen', espacio: 'resumen' },
+    ...Object.entries(menus).flatMap(([clave, items]) => items.map((item) => ({ ...item, espacio: clave }))),
   ];
   const coincidencias = consulta.trim()
     ? entradas.filter((item) => item.etiqueta.toLowerCase().includes(consulta.trim().toLowerCase()))
     : [];
-  const titulo = entradas.find((item) => (
-    item.modulo === modulo && (item.pestana ? item.pestana === pestana : modulo !== 'transporte' && modulo !== 'turismo')
-  ))?.etiqueta || (modulo === 'resumen' ? 'Resumen' : 'Panel');
+  const actual = menuActual.find((item) => item.id === seccion);
+  const titulo = espacio === 'inicio' ? 'Elige un espacio' : espacio === 'resumen' ? 'Resumen' : (actual?.titulo || 'Panel');
   const iniciales = `${usuario.nombre?.[0] || ''}${usuario.apellido?.[0] || ''}`.toUpperCase();
   const iconoSolo = colapsado && !menu;
-
-  function esActivo(item) {
-    if (item.modulo === 'resumen') return modulo === 'resumen';
-    if (item.pestana) return modulo === item.modulo && pestana === item.pestana;
-    return modulo === item.modulo && !item.pestana;
-  }
+  const acento = ['portal', 'transporte', 'taxi'].includes(espacio) ? ` acento-${espacio}` : '';
 
   return (
-    <div className={`saas${oscuro ? ' oscuro' : ''}${colapsado ? ' colapsado' : ''}`}>
+    <div className={`saas${oscuro ? ' oscuro' : ''}${colapsado ? ' colapsado' : ''}${acento}`}>
       {menu && <button type="button" className="drawer-fondo" aria-label="Cerrar módulos" onClick={() => setMenu(false)} />}
       <aside className={menu ? 'saas-lado abierto' : 'saas-lado'} aria-label="Módulos del panel">
         <div className="saas-marca">
@@ -361,7 +364,11 @@ export default function Admin() {
           </button>
         </div>
         <nav className="saas-nav">
-          <button type="button" className={modulo === 'resumen' ? 'activo' : ''} onClick={() => abrir('resumen')} aria-label="Abrir resumen">
+          <button type="button" className={espacio === 'inicio' ? 'activo' : ''} onClick={() => ir('inicio')} aria-label="Volver al inicio del panel">
+            <LayoutDashboard size={20} strokeWidth={1.75} aria-hidden="true" />
+            <span className="saas-etiqueta">Inicio</span>
+          </button>
+          <button type="button" className={espacio === 'resumen' ? 'activo' : ''} onClick={() => ir('resumen', 'resumen')} aria-label="Abrir resumen">
             <LayoutDashboard size={20} strokeWidth={1.75} aria-hidden="true" />
             <span className="saas-etiqueta">Resumen</span>
           </button>
@@ -369,17 +376,17 @@ export default function Admin() {
             {oscuro ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
             <span className="saas-etiqueta">{oscuro ? 'Modo claro' : 'Modo oscuro'}</span>
           </button>
-          {grupos.map((grupo) => (
-            <div key={grupo.id} className="saas-grupo">
-              <p className="saas-grupo-titulo"><grupo.Icono size={14} aria-hidden="true" /> <span>{grupo.etiqueta}</span></p>
-              {grupo.items.map((item) => (
-                <button key={item.id} type="button" className={esActivo(item) ? 'activo' : ''} onClick={() => abrir(item.modulo, item.pestana)} aria-label={`Abrir ${item.etiqueta}`}>
+          {menuActual.length > 0 && (
+            <div className="saas-grupo">
+              <p className="saas-grupo-titulo"><span>{espacio === 'portal' ? 'Portal del cantón' : espacio === 'transporte' ? 'Transporte' : 'Taxis'}</span></p>
+              {menuActual.map((item) => (
+                <button key={item.id} type="button" className={seccion === item.id ? 'activo' : ''} onClick={() => ir(espacio, item.id)} aria-label={`Abrir ${item.etiqueta}`}>
                   <item.Icono size={20} strokeWidth={1.75} aria-hidden="true" />
                   <span className="saas-etiqueta">{item.etiqueta}</span>
                 </button>
               ))}
             </div>
-          ))}
+          )}
         </nav>
       </aside>
       <div className="saas-principal">
@@ -387,13 +394,19 @@ export default function Admin() {
         <button type="button" className="btn btn-fantasma saas-abrir" onClick={() => setMenu(true)} aria-label="Abrir módulos del panel">
           <PanelLeft size={18} aria-hidden="true" /> <span>Módulos</span>
         </button>
-        <form className="saas-buscar" role="search" onSubmit={(evento) => { evento.preventDefault(); if (coincidencias[0]) abrir(coincidencias[0].modulo, coincidencias[0].pestana); }}>
+        <div className="saas-espacios" role="group" aria-label="Cambiar de espacio">
+          <button type="button" className={espacio === 'inicio' ? 'activo' : ''} onClick={() => ir('inicio')}>Inicio</button>
+          {puede.turismo && <button type="button" className={espacio === 'portal' ? 'activo' : ''} onClick={() => ir('portal')}>Portal</button>}
+          {puede.transporte && <button type="button" className={espacio === 'transporte' ? 'activo' : ''} onClick={() => ir('transporte')}>Transporte</button>}
+          {puede.taxi && <button type="button" className={espacio === 'taxi' ? 'activo' : ''} onClick={() => ir('taxi')}>Taxis</button>}
+        </div>
+        <form className="saas-buscar" role="search" onSubmit={(evento) => { evento.preventDefault(); if (coincidencias[0]) ir(coincidencias[0].espacio, coincidencias[0].id); }}>
           <Search size={18} aria-hidden="true" />
           <input value={consulta} onChange={(evento) => setConsulta(evento.target.value)} placeholder="Buscar módulo" aria-label="Buscar en el panel" />
           {consulta.trim() && (
             <div className="saas-resultados">
               {coincidencias.length ? coincidencias.map((item) => (
-                <button key={item.id} type="button" onClick={() => abrir(item.modulo, item.pestana)}>{item.etiqueta}</button>
+                <button key={`${item.espacio}-${item.id}`} type="button" onClick={() => ir(item.espacio, item.id)}>{item.etiqueta}</button>
               )) : <p>Sin módulos con ese nombre.</p>}
             </div>
           )}
@@ -428,7 +441,8 @@ export default function Admin() {
       <h1>{titulo}</h1>
       {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
       {error && <p className="aviso" role="alert">{error}</p>}
-      {modulo === 'resumen' && (
+      {espacio === 'inicio' && <InicioEspacios puede={puede} onEntrar={ir} />}
+      {espacio === 'resumen' && (
         <PanelResumen
           tablero={tablero}
           cargando={cargandoTablero}
@@ -436,23 +450,43 @@ export default function Admin() {
           rango={rango}
           onRango={setRango}
           onConsultar={consultarTablero}
-          onIr={abrir}
+          onIr={(mod, sub) => ir(mod === 'turismo' ? 'portal' : mod, sub === 'turismo' ? 'atractivo' : (sub || 'textos'))}
           puede={puede}
         />
       )}
+      {actual && espacio !== 'inicio' && espacio !== 'resumen' && (
+        <MarcoEdicion
+          miga={<>{espacio === 'portal' ? 'Portal' : espacio === 'transporte' ? 'Transporte' : 'Taxis'} / {actual.etiqueta}</>}
+          titulo={actual.titulo}
+          frase={actual.frase}
+          aparece={actual.aparece}
+          ver={actual.ver}
+        >
+          {espacio === 'portal' && seccion === 'textos' && <EditorTextos token={token} espacio="portal" />}
+          {espacio === 'portal' && seccion === 'sitio' && <EditorTextos token={token} espacio="sitio" />}
+          {espacio === 'portal' && seccion === 'contacto' && <EditorTextos token={token} espacio="portal" prefijo="portal.contacto" />}
+          {espacio === 'portal' && seccion === 'portada' && <AdminPortada token={token} />}
+          {espacio === 'portal' && ['atractivo', 'parroquia', 'gastronomia', 'hospedaje', 'actividad', 'ruta', 'guia', 'emprendimiento', 'directorio'].includes(seccion) && (
+            <AdminTurismo token={token} vista="fichas" tipo={seccion} fijo />
+          )}
+          {espacio === 'portal' && seccion === 'agenda' && <AdminTurismo token={token} vista="eventos" fijo />}
+          {espacio === 'portal' && seccion === 'galeria' && <AdminTurismo token={token} vista="galeria" fijo />}
+          {espacio === 'portal' && seccion === 'mensajes' && <AdminTurismo token={token} vista="mensajes" fijo />}
+          {espacio === 'transporte' && seccion === 'textos' && <EditorTextos token={token} espacio="transporte" />}
+          {espacio === 'transporte' && seccion === 'portada' && <AdminPortada token={token} />}
+          {espacio === 'transporte' && seccion === 'pagos' && <AdminPagos token={token} />}
+          {espacio === 'transporte' && seccion === 'flota' && <PanelFlota token={token} onCambio={recargarCatalogo} />}
+          {espacio === 'transporte' && seccion === 'facturas' && <PanelFacturas token={token} />}
+          {espacio === 'transporte' && seccion === 'emisor' && <PanelEmisor token={token} />}
+          {espacio === 'transporte' && seccion === 'blog' && <PanelBlog token={token} />}
+          {espacio === 'transporte' && seccion === 'anuncios' && <PanelAnuncios token={token} />}
+          {espacio === 'transporte' && seccion === 'galeria' && <PanelGaleria token={token} />}
+          {espacio === 'taxi' && seccion === 'textos' && <EditorTextos token={token} espacio="taxi" />}
+          {espacio === 'taxi' && seccion === 'operacion' && <AdminTaxis token={token} />}
+        </MarcoEdicion>
+      )}
 
-      {modulo === 'turismo' && pestana === 'portada' && <AdminPortada token={token} />}
-      {modulo === 'turismo' && pestana !== 'portada' && <AdminTurismo token={token} />}
-      {modulo === 'taxi' && <AdminTaxis token={token} />}
-      {modulo === 'transporte' && pestana === 'pagos' && <AdminPagos token={token} />}
-      {modulo === 'transporte' && pestana === 'flota' && <PanelFlota token={token} onCambio={recargarCatalogo} />}
-      {modulo === 'transporte' && pestana === 'facturas' && <PanelFacturas token={token} />}
-      {modulo === 'transporte' && pestana === 'emisor' && <PanelEmisor token={token} />}
-      {modulo === 'transporte' && pestana === 'blog' && <PanelBlog token={token} />}
-      {modulo === 'transporte' && pestana === 'anuncios' && <PanelAnuncios token={token} />}
-      {modulo === 'transporte' && pestana === 'galeria' && <PanelGaleria token={token} />}
-
-      {modulo === 'transporte' && (pestana === 'operacion' || pestana === 'turismo' || pestana === 'portada') && (
+      {espacio === 'transporte' && seccion === 'operacion' && (
       <>
       <div className="rejilla-admin">
         <form className="panel-form" noValidate onSubmit={crearViaje}>

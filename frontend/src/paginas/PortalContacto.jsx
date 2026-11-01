@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { solicitar } from '../api';
+import { useTextos } from '../textos';
 import { Aviso, EncabezadoPagina } from '../ui/ui';
 
 const VACIO = { nombre: '', email: '', mensaje: '' };
 
 export default function PortalContacto() {
+  const t = useTextos('portal');
   const [datos, setDatos] = useState(VACIO);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
@@ -32,11 +34,11 @@ export default function PortalContacto() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Contacto" bajada="Este buzón es del portal de turismo. No confirma una reserva de finca ni un pasaje." />
+      <EncabezadoPagina titulo={t('portal.contacto.titulo', 'Contacto')} bajada={t('portal.contacto.bajada', 'Este buzón es del portal de turismo. No confirma una reserva de finca ni un pasaje.')} />
     <section className="portal-bloque portal-contacto">
       <div>
-        <p>Los pasajes se compran en Transporte.</p>
-        <p><a href="mailto:turismo@lamana.ec">turismo@lamana.ec</a></p>
+        <p>{t('portal.contacto.nota', 'Los pasajes se compran en Transporte.')}</p>
+        <p><a href={`mailto:${t('portal.contacto.correo', 'turismo@lamana.ec')}`}>{t('portal.contacto.correo', 'turismo@lamana.ec')}</a></p>
       </div>
       <form className="panel-form" noValidate onSubmit={enviar}>
         <h2>Enviar un mensaje</h2>
