@@ -13,7 +13,7 @@ from app.database import engine
 from app.demo_tablero import asegurar_demo_tablero
 from app.horarios import generar_salidas
 from app.migraciones import asegurar_esquema
-from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, pagos_publico, panel, portada, taxi, tiempo_real, turismo, viajes
+from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, imagenes, pagos_publico, panel, portada, taxi, tiempo_real, turismo, viajes
 from app.routers import dashboard as tablero
 from app.routers import textos as textos_sitio
 
@@ -68,6 +68,9 @@ app.include_router(panel.router)
 app.include_router(tablero.router)
 app.include_router(textos_sitio.router)
 app.include_router(tiempo_real.router)
+app.include_router(imagenes.router)
+# La ruta /medios/bd/{id} queda registrada antes del volumen: así el binario de MySQL
+# gana sobre un archivo que no existe en disco.
 Path("/app/medios").mkdir(parents=True, exist_ok=True)
 app.mount("/medios", StaticFiles(directory="/app/medios"), name="medios")
 

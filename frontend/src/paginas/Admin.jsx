@@ -621,6 +621,30 @@ export default function Admin() {
       )}
       </div>
       </div>
+      <nav className="barra-inferior barra-admin" aria-label="Espacios del panel">
+        <button type="button" className={espacio === 'inicio' ? 'activo' : ''} onClick={() => ir('inicio')}>
+          <LayoutDashboard size={22} aria-hidden="true" />
+          <span>Inicio</span>
+        </button>
+        {puede.turismo && (
+          <button type="button" className={espacio === 'portal' ? 'activo' : ''} onClick={() => ir('portal', 'portada')}>
+            <Compass size={22} aria-hidden="true" />
+            <span>Portal</span>
+          </button>
+        )}
+        {puede.transporte && (
+          <button type="button" className={espacio === 'transporte' ? 'activo' : ''} onClick={() => ir('transporte', 'portada')}>
+            <Bus size={22} aria-hidden="true" />
+            <span>Transporte</span>
+          </button>
+        )}
+        {puede.taxi && (
+          <button type="button" className={espacio === 'taxi' ? 'activo' : ''} onClick={() => ir('taxi', 'operacion')}>
+            <Car size={22} aria-hidden="true" />
+            <span>Taxis</span>
+          </button>
+        )}
+      </nav>
     </div>
   );
 }

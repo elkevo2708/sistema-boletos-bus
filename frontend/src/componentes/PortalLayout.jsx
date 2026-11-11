@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { solicitar } from '../api';
 import { useAuth } from '../contexto/AuthContext';
+import { Bus, CalendarDays, Map, MapPin, MapPinned } from 'lucide-react';
 import { IDIOMAS, MENU_EXTRA, MENU_PORTAL, Search, UserRound } from '../iconosTurismo';
+import BarraInferior from './BarraInferior';
 import MarcaPortal from './MarcaPortal';
 
 export default function PortalLayout() {
@@ -108,6 +110,9 @@ export default function PortalLayout() {
               <span>{usuario ? usuario.nombre : textos.login}</span>
             </Link>
           </nav>
+          <Link className="perfil-redondo" to={destinoLogin} aria-label={usuario ? `Cuenta de ${usuario.nombre}` : textos.login}>
+            {usuario?.nombre?.[0]?.toUpperCase() || <UserRound size={20} aria-hidden="true" />}
+          </Link>
         </div>
         {menu && (
           <>
@@ -165,6 +170,13 @@ export default function PortalLayout() {
         </div>
       </footer>
       <p className="portal-base">© 2026 La Maná Recorres. El transporte conserva su propia marca.</p>
+      <BarraInferior items={[
+        { to: '/', label: 'Inicio', Icono: MapPin, end: true },
+        { to: '/mapa', label: 'Mapa', Icono: Map },
+        { to: '/transporte', label: 'Boletos', Icono: Bus },
+        { to: '/taxi', label: 'Taxi', Icono: MapPinned },
+        { to: '/agenda', label: 'Agenda', Icono: CalendarDays },
+      ]} />
     </div>
   );
 }

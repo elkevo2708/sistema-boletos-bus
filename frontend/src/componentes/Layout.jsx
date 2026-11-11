@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Bus, House, Images, Newspaper, UserRound } from 'lucide-react';
 import { solicitar } from '../api';
 import { useAuth } from '../contexto/AuthContext';
 import Anuncios from './Anuncios';
+import BarraInferior from './BarraInferior';
 import Marca from './Marca';
 
 export default function Layout() {
@@ -84,6 +86,13 @@ export default function Layout() {
               Pasaje en línea
             </Link>
           </nav>
+          <Link
+            className="perfil-redondo"
+            to={usuario ? '/mis-facturas' : '/ingresar'}
+            aria-label={usuario ? `Cuenta de ${usuario.nombre}` : 'Ingresar'}
+          >
+            {usuario?.nombre?.[0]?.toUpperCase() || <UserRound size={20} aria-hidden="true" />}
+          </Link>
         </header>
       </div>
       <Anuncios />
@@ -127,6 +136,13 @@ export default function Layout() {
         </div>
       </footer>
       <p className="pie-base">© 2026 Cooperativa de Transporte La Maná. Horarios en hora de Ecuador.</p>
+      <BarraInferior etiqueta="Navegación de transporte" items={[
+        { to: '/', label: 'Inicio', Icono: House, end: true },
+        { to: '/transporte', label: 'Boletos', Icono: Bus, end: true },
+        { to: '/transporte/noticias', label: 'Noticias', Icono: Newspaper },
+        { to: '/transporte/galeria', label: 'Galería', Icono: Images },
+        { to: usuario ? '/mis-facturas' : '/ingresar', label: usuario ? 'Cuenta' : 'Entrar', Icono: UserRound },
+      ]} />
       <a className="whatsapp" href="https://wa.me/593994127992" aria-label="Escribir por WhatsApp a la matriz de La Maná" target="_blank" rel="noreferrer">
         <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
           <path fill="#fff" d="M12 3a8.7 8.7 0 0 0-7.5 13.1L3.5 20.5l4.5-1.2A8.7 8.7 0 1 0 12 3zm4.8 12.3c-.2.6-1.2 1.1-1.6 1.1-.4.1-.9.2-2.9-.6-2.4-1-4-3.5-4.1-3.7-.1-.2-1-1.3-1-2.5s.6-1.8.9-2c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5.2.6.7 2 .8 2.1.1.2.1.3 0 .5-.1.2-.2.3-.3.5l-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.4.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.6.8 1.9.9.3.2.4.2.5.3.1.2 0 .8-.2 1.4z" />

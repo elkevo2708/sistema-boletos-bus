@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { enviarFormulario, solicitar } from '../api';
+import CampoImagen from '../componentes/CampoImagen';
 import { MedioHero, incrustarVideo } from '../componentes/HeroPortada';
 
 const VACIO = {
@@ -19,9 +20,9 @@ export default function AdminPortada({ token }) {
   const [lista, setLista] = useState([]);
   const [form, setForm] = useState(VACIO);
   const [archivo, setArchivo] = useState(null);
-  const [poster, setPoster] = useState(null);
+  const [posterUrl, setPosterUrl] = useState('');
   const [vistaArchivo, setVistaArchivo] = useState('');
-  const [vistaPoster, setVistaPoster] = useState('');
+  const [subidas, setSubidas] = useState(0);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -44,24 +45,14 @@ export default function AdminPortada({ token }) {
     return () => URL.revokeObjectURL(url);
   }, [archivo]);
 
-  useEffect(() => {
-    if (!poster) {
-      setVistaPoster('');
-      return undefined;
-    }
-    const url = URL.createObjectURL(poster);
-    setVistaPoster(url);
-    return () => URL.revokeObjectURL(url);
-  }, [poster]);
-
   const vista = useMemo(() => ({
     tipo: form.tipo,
-    url: form.origen === 'archivo' ? vistaArchivo : form.enlace,
+    url: form.tipo === 'imagen' || form.origen === 'enlace' ? form.enlace : vistaArchivo,
     incrustado: form.tipo === 'video' && form.origen === 'enlace' ? incrustarVideo(form.enlace) : '',
-    poster: vistaPoster || '/bus-lamana.jpg',
+    poster: posterUrl || '/bus-lamana.jpg',
     titulo: form.titulo || 'Título de la portada',
     subtitulo: form.subtitulo,
-  }), [form, vistaArchivo, vistaPoster]);
+  }), [form, vistaArchivo, posterUrl]);
 
   function cambiar(campo, valor) {
     setForm((actual) => ({ ...actual, [campo]: valor }));
@@ -75,17 +66,22 @@ export default function AdminPortada({ token }) {
       setError('Escriba un título de al menos 3 caracteres.');
       return;
     }
-    if (form.origen === 'archivo' && !archivo) {
+    const esImagen = form.tipo === 'imagen';
+    if (esImagen && !form.enlace.trim()) {
+      setError('Suba una imagen o pegue su URL.');
+      return;
+    }
+    if (!esImagen && form.origen === 'archivo' && !archivo) {
       setError('Elija el archivo de la diapositiva.');
       return;
     }
-    if (form.origen === 'enlace' && !form.enlace.trim()) {
-      setError('Pegue el enlace de la imagen o del video.');
+    if (!esImagen && form.origen === 'enlace' && !form.enlace.trim()) {
+      setError('Pegue el enlace del video.');
       return;
     }
     const datos = new FormData();
     datos.set('tipo', form.tipo);
-    datos.set('origen', form.origen);
+    datos.set('origen', esImagen ? 'enlace' : form.origen);
     datos.set('titulo', form.titulo.trim());
     datos.set('subtitulo', form.subtitulo.trim());
     datos.set('texto_boton', form.texto_boton.trim());
@@ -94,14 +90,14 @@ export default function AdminPortada({ token }) {
     datos.set('orden', String(form.orden || 0));
     datos.set('activo', form.activo ? '1' : '0');
     datos.set('ambito', form.ambito || 'portal');
-    if (archivo) datos.set('archivo', archivo);
-    if (poster) datos.set('poster', poster);
+    if (!esImagen && archivo) datos.set('archivo', archivo);
+    if (posterUrl.trim()) datos.set('poster_enlace', posterUrl.trim());
     setOcupado(true);
     try {
       await enviarFormulario('/admin/portada', { token, datos });
       setMensaje('Diapositiva guardada.');
       setArchivo(null);
-      setPoster(null);
+      setPosterUrl('');
       await cargar();
     } catch (err) {
       setError(err.message);
@@ -156,35 +152,48 @@ export default function AdminPortada({ token }) {
               <option value="video">Video</option>
             </select>
           </label>
-          <label>
-            Origen
-            <select value={form.origen} onChange={(e) => cambiar('origen', e.target.value)} aria-label="Origen del medio">
-              <option value="enlace">Enlace</option>
-              <option value="archivo">Archivo</option>
-            </select>
-          </label>
+          {form.tipo === 'video' && (
+            <label>
+              Origen
+              <select value={form.origen} onChange={(e) => cambiar('origen', e.target.value)} aria-label="Origen del medio">
+                <option value="enlace">Enlace</option>
+                <option value="archivo">Archivo</option>
+              </select>
+            </label>
+          )}
         </div>
-        {form.origen === 'enlace' ? (
+        {form.tipo === 'imagen' ? (
+          <CampoImagen
+            token={token}
+            valor={form.enlace}
+            onChange={(url) => cambiar('enlace', url)}
+            etiqueta="Imagen de la portada"
+            onSubiendo={(activo) => setSubidas((n) => Math.max(0, n + (activo ? 1 : -1)))}
+          />
+        ) : form.origen === 'enlace' ? (
           <label>
-            {form.tipo === 'video' ? 'YouTube, Vimeo, MP4 o WebM' : 'Enlace de la imagen'}
+            YouTube, Vimeo, MP4 o WebM
             <input value={form.enlace} onChange={(e) => cambiar('enlace', e.target.value)} aria-label="Enlace del medio" />
           </label>
         ) : (
           <label>
-            {form.tipo === 'video' ? 'Video MP4 o WebM' : 'Imagen JPG, PNG o WebP'}
+            Video MP4 o WebM
             <input
               type="file"
-              accept={form.tipo === 'video' ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp'}
+              accept="video/mp4,video/webm"
               aria-label="Archivo de la diapositiva"
               onChange={(e) => setArchivo(e.target.files?.[0] || null)}
             />
           </label>
         )}
         {form.tipo === 'video' && (
-          <label>
-            Imagen de respaldo
-            <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Póster del video" onChange={(e) => setPoster(e.target.files?.[0] || null)} />
-          </label>
+          <CampoImagen
+            token={token}
+            valor={posterUrl}
+            onChange={setPosterUrl}
+            etiqueta="Imagen de respaldo"
+            onSubiendo={(activo) => setSubidas((n) => Math.max(0, n + (activo ? 1 : -1)))}
+          />
         )}
         <label>
           Título
@@ -219,8 +228,8 @@ export default function AdminPortada({ token }) {
           <input type="checkbox" checked={form.activo} onChange={(e) => cambiar('activo', e.target.checked)} aria-label="Diapositiva activa" />
           Activa
         </label>
-        <button type="submit" className="btn btn-pino" disabled={ocupado} aria-label="Guardar diapositiva">
-          {ocupado ? 'Guardando…' : 'Guardar diapositiva'}
+        <button type="submit" className="btn btn-pino" disabled={ocupado || subidas > 0} aria-label="Guardar diapositiva">
+          {subidas > 0 ? 'Subiendo imagen…' : (ocupado ? 'Guardando…' : 'Guardar diapositiva')}
         </button>
         {mensaje && <p className="aviso-ok" role="status">{mensaje}</p>}
         {error && <p className="aviso" role="alert">{error}</p>}

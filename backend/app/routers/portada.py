@@ -11,12 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencias import exigir_portada, obtener_sesion
 from app.errores import traducir_error_mysql
 from app.esquemas import PortadaIn
+from app.imagenes import ImagenInvalida, insertar_imagen, normalizar_guardado, url_publica, validar_imagen
 
 router = APIRouter()
 MEDIOS = Path("/app/medios")
-IMAGENES = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
 VIDEOS = {".mp4": ".mp4", ".webm": ".webm"}
-TOPE_IMAGEN = 5 * 1024 * 1024
 TOPE_VIDEO = 20 * 1024 * 1024
 _YOUTUBE = re.compile(r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/shorts/)([\w-]{6,})")
 _VIMEO = re.compile(r"vimeo\.com/(?:video/)?(\d+)")
@@ -39,10 +38,10 @@ def incrustar(enlace: str) -> str | None:
 def publicar(fila: dict, completo: bool = False) -> dict:
     enlace = (fila.get("enlace") or "").strip()
     if fila["origen"] == "archivo" and fila.get("archivo"):
-        url = f"/medios/{fila['archivo']}"
+        url = url_publica(fila["archivo"]) or ""
     else:
         url = enlace
-    poster = f"/medios/{fila['poster']}" if fila.get("poster") else "/bus-lamana.jpg"
+    poster = url_publica(fila.get("poster")) or "/bus-lamana.jpg"
     datos = {
         "id": fila["id"],
         "tipo": fila["tipo"],
@@ -76,18 +75,20 @@ def _guardar(contenido: bytes, extension: str) -> str:
     return nombre
 
 
-async def _leer_archivo(archivo: UploadFile, videos: bool) -> str:
-    sufijo = Path(archivo.filename or "").suffix.lower()
-    tabla = {**IMAGENES, **VIDEOS} if videos else IMAGENES
-    extension = tabla.get(sufijo)
-    if extension is None:
-        detalle = "Suba un MP4, WebM, JPG, PNG o WebP" if videos else "El póster debe ser JPG, PNG o WebP"
-        raise HTTPException(status_code=422, detail=detalle)
+async def _leer_archivo(archivo: UploadFile, videos: bool, sesion: AsyncSession) -> str:
     contenido = await archivo.read()
-    tope = TOPE_VIDEO if extension in VIDEOS.values() else TOPE_IMAGEN
-    if not contenido or len(contenido) > tope:
-        raise HTTPException(status_code=422, detail="El archivo supera el tamaño permitido")
-    return _guardar(contenido, extension)
+    sufijo = Path(archivo.filename or "").suffix.lower()
+    if videos and sufijo in VIDEOS:
+        if not contenido or len(contenido) > TOPE_VIDEO:
+            raise HTTPException(status_code=422, detail="El archivo supera el tamaño permitido")
+        return _guardar(contenido, VIDEOS[sufijo])
+    try:
+        mime = validar_imagen(contenido, archivo.content_type)
+    except ImagenInvalida as exc:
+        detalle = "Suba un MP4, WebM, JPG, PNG, WebP o GIF" if videos else str(exc)
+        raise HTTPException(status_code=422, detail=detalle) from exc
+    fila = await insertar_imagen(sesion, archivo.filename, mime, contenido)
+    return fila["ruta"]
 
 
 @router.get("/portada")
@@ -124,6 +125,7 @@ async def crear(
     ambito: str = Form(default="portal"),
     archivo: UploadFile | None = File(default=None),
     poster: UploadFile | None = File(default=None),
+    poster_enlace: str = Form(default=""),
     _: dict = Depends(exigir_portada),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
@@ -131,15 +133,22 @@ async def crear(
     nombre = None
     nombre_poster = None
     if datos["origen"] == "archivo":
-        if archivo is None:
+        if archivo is None or not archivo.filename:
             raise HTTPException(status_code=422, detail="Falta el archivo de la diapositiva")
-        nombre = await _leer_archivo(archivo, videos=datos["tipo"] == "video")
+        nombre = await _leer_archivo(archivo, videos=datos["tipo"] == "video", sesion=sesion)
         if datos["tipo"] == "imagen" and Path(nombre).suffix.lower() in VIDEOS.values():
+            await sesion.rollback()
             raise HTTPException(status_code=422, detail="Una diapositiva de imagen no acepta video")
         if datos["tipo"] == "video" and Path(nombre).suffix.lower() not in VIDEOS.values():
+            await sesion.rollback()
             raise HTTPException(status_code=422, detail="Suba un video MP4 o WebM")
     if poster is not None and poster.filename:
-        nombre_poster = await _leer_archivo(poster, videos=False)
+        nombre_poster = await _leer_archivo(poster, videos=False, sesion=sesion)
+    elif poster_enlace.strip():
+        try:
+            nombre_poster = normalizar_guardado(poster_enlace)
+        except ImagenInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
         resultado = await sesion.execute(
             text(

@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencias import obtener_sesion
+from app.imagenes import url_publica
 from app.presentacion import fila_a_dict
 
 router = APIRouter()
@@ -10,7 +11,7 @@ router = APIRouter()
 
 def _con_medios(fila: dict, campo: str = "imagen") -> dict:
     if fila.get(campo):
-        fila[campo] = f"/medios/{fila[campo]}"
+        fila[campo] = url_publica(fila[campo])
     return fila
 
 
@@ -99,6 +100,6 @@ async def listar_galeria(
     salida = []
     for fila in filas:
         item = fila_a_dict(fila)
-        item["url"] = f"/medios/{item['archivo']}"
+        item["url"] = url_publica(item["archivo"])
         salida.append(item)
     return salida

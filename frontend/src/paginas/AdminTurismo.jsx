@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { enviarFormulario, solicitar } from '../api';
+import CampoImagen from '../componentes/CampoImagen';
 import { EstadoVacio, Insignia } from '../ui/ui';
 
 const TIPOS = ['atractivo', 'gastronomia', 'hospedaje', 'actividad', 'ruta', 'parroquia', 'guia', 'emprendimiento', 'directorio', 'evento'];
@@ -33,6 +34,8 @@ export default function AdminTurismo({ token, vista = 'fichas', tipo = '', fijo 
   const [evento, setEvento] = useState({
     titulo: '', resumen: '', cuerpo: '', inicio: '', fin: '', lugar: '', imagen: '', credito: '', categoria_id: '', activo: true,
   });
+  const [fotoGaleria, setFotoGaleria] = useState({ titulo: '', descripcion: '', credito: '', imagen: '' });
+  const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
 
@@ -114,20 +117,6 @@ export default function AdminTurismo({ token, vista = 'fichas', tipo = '', fijo 
     }
   }
 
-  async function subir(event, asignar) {
-    const archivo = event.target.files?.[0];
-    if (!archivo) return;
-    const datos = new FormData();
-    datos.set('archivo', archivo);
-    try {
-      const respuesta = await enviarFormulario('/admin/turismo/medios', { token, datos });
-      asignar(respuesta.url);
-      aviso('Imagen subida. Guarde la ficha para usarla.');
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
   async function guardarEvento(event) {
     event.preventDefault();
     try {
@@ -162,11 +151,22 @@ export default function AdminTurismo({ token, vista = 'fichas', tipo = '', fijo 
 
   async function subirGaleria(event) {
     event.preventDefault();
-    const formulario = event.currentTarget;
-    const datos = new FormData(formulario);
+    if (!fotoGaleria.titulo.trim()) {
+      setError('Escriba el título de la foto.');
+      return;
+    }
+    if (!fotoGaleria.imagen.trim()) {
+      setError('Suba una imagen JPG, PNG, WebP o GIF, o pegue una URL.');
+      return;
+    }
+    const datos = new FormData();
+    datos.set('titulo', fotoGaleria.titulo.trim());
+    datos.set('descripcion', fotoGaleria.descripcion.trim());
+    datos.set('credito', fotoGaleria.credito.trim());
+    datos.set('enlace', fotoGaleria.imagen.trim());
     try {
       await enviarFormulario('/admin/turismo/galeria', { token, datos });
-      formulario.reset();
+      setFotoGaleria({ titulo: '', descripcion: '', credito: '', imagen: '' });
       aviso('Foto agregada a la galería del portal.');
       await cargar();
     } catch (err) {
@@ -248,16 +248,19 @@ export default function AdminTurismo({ token, vista = 'fichas', tipo = '', fijo 
             <p className="meta">Sale en la tarjeta, antes de abrir la ficha. {ficha.resumen.length}/400</p>
             <label>Texto<textarea value={ficha.cuerpo} onChange={(e) => setFicha({ ...ficha, cuerpo: e.target.value })} aria-label="Texto de la ficha" rows={5} /></label>
             <label>Zona<input value={ficha.zona} onChange={(e) => setFicha({ ...ficha, zona: e.target.value })} aria-label="Zona" /></label>
-            <label>Imagen actual<input value={ficha.imagen || ''} onChange={(e) => setFicha({ ...ficha, imagen: e.target.value })} aria-label="Ruta de la imagen" /></label>
-            <label>Subir imagen
-              <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Archivo de la ficha" onChange={(e) => subir(e, (url) => setFicha((actual) => ({ ...actual, imagen: url })))} />
-            </label>
+            <CampoImagen
+              token={token}
+              valor={ficha.imagen || ''}
+              onChange={(url) => { setSucio(true); setFicha((actual) => ({ ...actual, imagen: url })); }}
+              etiqueta="Imagen de la ficha"
+              onSubiendo={setSubiendo}
+            />
             <label>Crédito<input value={ficha.credito} onChange={(e) => setFicha({ ...ficha, credito: e.target.value })} aria-label="Crédito de la imagen" /></label>
             <label className="check">
               <input type="checkbox" checked={ficha.destacado} onChange={(e) => setFicha({ ...ficha, destacado: e.target.checked })} aria-label="Ficha destacada" />
               Destacada en el inicio
             </label>
-            <button type="submit" className="btn btn-pino" aria-label="Guardar ficha">Guardar ficha</button>
+            <button type="submit" className="btn btn-pino" disabled={subiendo} aria-label="Guardar ficha">{subiendo ? 'Subiendo imagen…' : 'Guardar ficha'}</button>
           </form>
           <label>Buscar en la lista
             <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Nombre de la ficha" aria-label="Buscar ficha" />
@@ -291,7 +294,14 @@ export default function AdminTurismo({ token, vista = 'fichas', tipo = '', fijo 
               <label>Fin<input type="date" value={evento.fin} onChange={(e) => setEvento({ ...evento, fin: e.target.value })} aria-label="Fin del evento" /></label>
             </div>
             <label>Lugar<input value={evento.lugar} onChange={(e) => setEvento({ ...evento, lugar: e.target.value })} aria-label="Lugar del evento" /></label>
-            <button type="submit" className="btn btn-pino" aria-label="Guardar evento">Guardar evento</button>
+            <CampoImagen
+              token={token}
+              valor={evento.imagen || ''}
+              onChange={(url) => setEvento((actual) => ({ ...actual, imagen: url }))}
+              etiqueta="Imagen del evento"
+              onSubiendo={setSubiendo}
+            />
+            <button type="submit" className="btn btn-pino" disabled={subiendo} aria-label="Guardar evento">{subiendo ? 'Subiendo imagen…' : 'Guardar evento'}</button>
           </form>
           <ul className="lista-admin">
             {eventos.map((item) => (
@@ -309,15 +319,22 @@ export default function AdminTurismo({ token, vista = 'fichas', tipo = '', fijo 
         <div className="rejilla-admin">
           <form className="panel-form" noValidate onSubmit={subirGaleria}>
             <h2>Foto de la galería</h2>
-            <label>Título<input name="titulo" aria-label="Título de la foto" /></label>
-            <label>Descripción<input name="descripcion" aria-label="Descripción de la foto" /></label>
-            <label>Crédito<input name="credito" aria-label="Crédito de la foto" /></label>
-            <label>Archivo<input name="archivo" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Archivo de la galería" /></label>
-            <button type="submit" className="btn btn-pino" aria-label="Subir foto">Subir foto</button>
+            <label>Título<input value={fotoGaleria.titulo} onChange={(e) => setFotoGaleria({ ...fotoGaleria, titulo: e.target.value })} aria-label="Título de la foto" /></label>
+            <label>Descripción<input value={fotoGaleria.descripcion} onChange={(e) => setFotoGaleria({ ...fotoGaleria, descripcion: e.target.value })} aria-label="Descripción de la foto" /></label>
+            <label>Crédito<input value={fotoGaleria.credito} onChange={(e) => setFotoGaleria({ ...fotoGaleria, credito: e.target.value })} aria-label="Crédito de la foto" /></label>
+            <CampoImagen
+              token={token}
+              valor={fotoGaleria.imagen}
+              onChange={(url) => setFotoGaleria((actual) => ({ ...actual, imagen: url }))}
+              etiqueta="Archivo de la galería"
+              onSubiendo={setSubiendo}
+            />
+            <button type="submit" className="btn btn-pino" disabled={subiendo} aria-label="Subir foto">{subiendo ? 'Subiendo imagen…' : 'Subir foto'}</button>
           </form>
           <ul className="lista-admin">
             {galeria.map((item) => (
               <li key={item.id}>
+                {item.url && <img className="mini-foto" src={item.url} alt="" />}
                 <strong>{item.titulo}</strong>
                 <button type="button" onClick={() => quitar(`/admin/turismo/galeria/${item.id}`, item.titulo)} aria-label={`Quitar ${item.titulo}`}>Quitar</button>
               </li>
