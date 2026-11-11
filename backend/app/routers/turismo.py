@@ -1,9 +1,6 @@
 """Portal de turismo de La Maná. Las fichas se editan en taquilla."""
 
-from pathlib import Path
-from secrets import token_hex
-
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,21 +8,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencias import exigir_turismo, obtener_sesion
 from app.errores import traducir_error_mysql
 from app.esquemas import TurismoCategoriaIn, TurismoContactoIn, TurismoEventoIn, TurismoFichaIn
+from app.imagenes import ImagenInvalida, insertar_imagen, normalizar_guardado, url_publica, validar_imagen
 from app.slug import slugificar
 
 router = APIRouter()
-MEDIOS = Path("/app/medios")
 TIPOS_FICHA = ("atractivo", "gastronomia", "hospedaje", "actividad", "ruta", "parroquia", "guia", "emprendimiento", "directorio")
-EXTENSIONES = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
 
 
 def _url(valor: str | None) -> str | None:
-    if not valor:
-        return None
-    texto_url = str(valor).strip()
-    if texto_url.startswith("/"):
-        return texto_url
-    return f"/medios/{texto_url}"
+    return url_publica(valor)
+
+
+def _imagen_guardada(valor: str | None) -> str | None:
+    try:
+        return normalizar_guardado(valor)
+    except ImagenInvalida as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 def _fila_ficha(fila: dict) -> dict:
@@ -464,7 +462,7 @@ async def _guardar_ficha(sesion: AsyncSession, datos: TurismoFichaIn, slug: str,
         "direccion": datos.direccion.strip()[:200],
         "lat": datos.lat,
         "lng": datos.lng,
-        "imagen": (datos.imagen or "").strip() or None,
+        "imagen": _imagen_guardada(datos.imagen),
         "credito": datos.credito.strip()[:255],
         "destacado": 1 if datos.destacado else 0,
         "orden": datos.orden,
@@ -571,7 +569,7 @@ async def _guardar_evento(sesion: AsyncSession, datos: TurismoEventoIn, slug: st
         "inicio": datos.inicio,
         "fin": datos.fin,
         "lugar": datos.lugar.strip()[:160],
-        "imagen": (datos.imagen or "").strip() or None,
+        "imagen": _imagen_guardada(datos.imagen),
         "credito": datos.credito.strip()[:255],
         "activo": 1 if datos.activo else 0,
     }
@@ -616,15 +614,23 @@ async def admin_galeria(_: dict = Depends(exigir_turismo), sesion: AsyncSession 
 
 @router.post("/admin/turismo/galeria", status_code=201)
 async def crear_foto(
-    titulo: str,
-    descripcion: str = "",
-    credito: str = "",
-    orden: int = 0,
-    archivo: UploadFile = File(),
+    titulo: str = Form(),
+    descripcion: str = Form(default=""),
+    credito: str = Form(default=""),
+    orden: int = Form(default=0),
+    enlace: str = Form(default=""),
+    archivo: UploadFile | None = File(default=None),
     _: dict = Depends(exigir_turismo),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
-    nombre = await _guardar_imagen(archivo)
+    if archivo is not None and archivo.filename:
+        nombre = await _guardar_imagen(sesion, archivo)
+    elif enlace.strip():
+        nombre = _imagen_guardada(enlace)
+        if not nombre:
+            raise HTTPException(status_code=422, detail="Suba una imagen JPG, PNG, WebP o GIF, o pegue una URL")
+    else:
+        raise HTTPException(status_code=422, detail="Suba una imagen JPG, PNG, WebP o GIF, o pegue una URL")
     resultado = await sesion.execute(
         text(
             """
@@ -641,7 +647,7 @@ async def crear_foto(
         },
     )
     await sesion.commit()
-    return {"id": resultado.lastrowid, "url": f"/medios/{nombre}"}
+    return {"id": resultado.lastrowid, "url": url_publica(nombre)}
 
 
 @router.delete("/admin/turismo/galeria/{foto_id}", status_code=204)
@@ -673,20 +679,18 @@ async def mensajes(_: dict = Depends(exigir_turismo), sesion: AsyncSession = Dep
 async def subir_medio(
     archivo: UploadFile = File(),
     _: dict = Depends(exigir_turismo),
+    sesion: AsyncSession = Depends(obtener_sesion),
 ):
-    nombre = await _guardar_imagen(archivo)
-    return {"archivo": nombre, "url": f"/medios/{nombre}"}
+    nombre = await _guardar_imagen(sesion, archivo)
+    await sesion.commit()
+    return {"archivo": nombre, "url": url_publica(nombre)}
 
 
-async def _guardar_imagen(archivo: UploadFile) -> str:
-    sufijo = Path(archivo.filename or "").suffix.lower()
-    extension = EXTENSIONES.get(sufijo)
-    if extension is None:
-        raise HTTPException(status_code=422, detail="La imagen debe ser JPG, PNG o WebP")
+async def _guardar_imagen(sesion: AsyncSession, archivo: UploadFile) -> str:
     contenido = await archivo.read()
-    if not contenido or len(contenido) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=422, detail="La imagen debe pesar entre 1 byte y 5 MB")
-    MEDIOS.mkdir(parents=True, exist_ok=True)
-    nombre = f"{token_hex(8)}{extension}"
-    (MEDIOS / nombre).write_bytes(contenido)
-    return nombre
+    try:
+        mime = validar_imagen(contenido, archivo.content_type)
+        fila = await insertar_imagen(sesion, archivo.filename, mime, contenido)
+    except ImagenInvalida as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return fila["ruta"]

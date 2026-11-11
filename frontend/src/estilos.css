@@ -454,6 +454,14 @@ tfoot th { font-size: 1.05rem; }
   border: 1px solid var(--linea); border-radius: var(--r-sm); padding: var(--s-1) var(--s-3); cursor: pointer; font-weight: 700;
 }
 .panel-corto { max-width: 560px; margin-bottom: var(--s-4); }
+.campo-imagen { display: grid; gap: var(--s-2); }
+.campo-imagen-etiqueta { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tinta-suave); }
+.campo-imagen-previa { width: 100%; max-height: 200px; object-fit: cover; border-radius: var(--r-md); border: 1px solid var(--linea); background: white; }
+.campo-imagen-botones { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.mini-foto { width: 72px; height: 48px; object-fit: cover; border-radius: var(--r-sm); }
+@media (max-width: 640px) {
+  .campo-imagen-botones { grid-template-columns: 1fr; }
+}
 .admin-mosaico { margin-top: var(--s-4); }
 .admin-mosaico figure { margin: 0; background: #fff; border: 1px solid var(--linea); border-radius: var(--r-md); overflow: hidden; }
 .admin-mosaico img { width: 100%; height: 160px; object-fit: cover; display: block; }
