@@ -201,14 +201,25 @@ export default function Taxi() {
                 Tarifa de ejemplo <strong>${Number(cotizacion.tarifa_estimada).toFixed(2)}</strong>. {cotizacion.aviso}
               </p>
             )}
-            <label>Pago
-              <select value={metodo} onChange={(e) => setMetodo(e.target.value)} aria-label="Método de pago del taxi">
-                <option value="efectivo">Efectivo</option>
-                <option value="deuna">DeUna! (prueba)</option>
-                <option value="tarjeta">Tarjeta (prueba)</option>
-                <option value="payphone">PayPhone (prueba)</option>
-              </select>
-            </label>
+            <div className="opciones-tarjeta" role="radiogroup" aria-label="Método de pago del taxi">
+              {[
+                ['efectivo', 'Efectivo'],
+                ['deuna', 'DeUna!'],
+                ['tarjeta', 'Tarjeta'],
+                ['payphone', 'PayPhone'],
+              ].map(([valor, etiqueta]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  role="radio"
+                  aria-checked={metodo === valor}
+                  className={metodo === valor ? 'activo' : ''}
+                  onClick={() => setMetodo(valor)}
+                >
+                  {etiqueta}
+                </button>
+              ))}
+            </div>
             <button type="button" className="btn btn-portal" disabled={!destino} onClick={pedir}>Solicitar taxi</button>
           </>
         )}

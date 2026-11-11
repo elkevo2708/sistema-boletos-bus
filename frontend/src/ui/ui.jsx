@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, MapPin } from 'lucide-react';
 
 export function Boton({
   variante = 'primario',
@@ -56,6 +58,32 @@ export function Seccion({ titulo, kicker, accion, clara = false, children, class
       )}
       {children}
     </section>
+  );
+}
+
+export function TarjetaSaludo({ titulo, bajada, to, icono: Icono = MapPin }) {
+  return (
+    <Link className="tarjeta-saludo" to={to}>
+      <span className="tarjeta-saludo-icono" aria-hidden="true"><Icono size={26} strokeWidth={2.25} /></span>
+      <span>
+        <strong>{titulo}</strong>
+        <small>{bajada}</small>
+      </span>
+      <ChevronRight className="tarjeta-saludo-flecha" size={22} aria-hidden="true" />
+    </Link>
+  );
+}
+
+export function AccesosRapidos({ items }) {
+  return (
+    <div className="accesos-rapidos">
+      {items.map((item) => (
+        <Link key={item.to} className="acceso-rapido" to={item.to}>
+          <span aria-hidden="true"><item.Icono size={28} strokeWidth={2.1} /></span>
+          {item.label}
+        </Link>
+      ))}
+    </div>
   );
 }
 

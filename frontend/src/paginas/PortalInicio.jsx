@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Bus, CalendarDays, Car, Compass } from 'lucide-react';
 import { solicitar } from '../api';
 import HeroPortada from '../componentes/HeroPortada';
 import TarjetaTurismo from '../componentes/TarjetaTurismo';
 import { ICONOS_PRACTICOS, MENU_EXTRA } from '../iconosTurismo';
 import { useTextos } from '../textos';
-import { Seccion } from '../ui/ui';
+import { AccesosRapidos, Seccion, TarjetaSaludo } from '../ui/ui';
 
 export default function PortalInicio() {
   const t = useTextos('portal');
@@ -26,6 +27,19 @@ export default function PortalInicio() {
   return (
     <>
       <HeroPortada ambito="portal" />
+      <div className="portal-bloque inicio-atajos">
+        <TarjetaSaludo
+          titulo="¿A dónde vamos hoy?"
+          bajada="Elige cómo quieres recorrer La Maná."
+          to="/explorar"
+        />
+        <AccesosRapidos items={[
+          { to: '/transporte', label: 'Boletos', Icono: Bus },
+          { to: '/taxi', label: 'Taxi', Icono: Car },
+          { to: '/atractivos', label: 'Turismo', Icono: Compass },
+          { to: '/agenda', label: 'Agenda', Icono: CalendarDays },
+        ]} />
+      </div>
       <Seccion kicker="Cantón La Maná" titulo={t('portal.recorrer.titulo', 'Qué puedes recorrer')}>
         {resumen ? (
           <div className="rejilla-turismo">
