@@ -9,57 +9,40 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencias import exigir_transporte, obtener_sesion
 from app.errores import traducir_error_mysql
 from app.esquemas import AnuncioIn, BlogIn
+from app.imagenes import ImagenInvalida, insertar_imagen, normalizar_guardado, url_publica, validar_imagen
 from app.presentacion import fila_a_dict
 from app.slug import slugificar
 
 router = APIRouter(dependencies=[Depends(exigir_transporte)])
 MEDIOS = Path("/app/medios")
-TIPOS = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-}
-TOPE = 5 * 1024 * 1024
 
 
 def _publicar(fila: dict) -> dict:
-    for campo in ("imagen", "archivo"):
-        valor = fila.get(campo)
-        if valor and not str(valor).startswith("/medios/"):
-            if campo == "archivo":
-                fila["url"] = f"/medios/{valor}"
-            else:
-                fila[campo] = f"/medios/{valor}"
-    if fila.get("archivo") and "url" not in fila:
-        fila["url"] = f"/medios/{fila['archivo']}"
+    if fila.get("imagen"):
+        fila["imagen"] = url_publica(fila["imagen"])
+    if fila.get("archivo"):
+        fila["url"] = url_publica(fila["archivo"])
     return fila
 
 
 def _nombre_archivo(valor: str | None) -> str | None:
     if not valor:
         return None
-    limpio = str(valor).strip().lstrip("/")
-    if limpio.startswith("medios/"):
-        limpio = limpio[len("medios/") :]
-    return limpio or None
+    try:
+        return normalizar_guardado(valor)
+    except ImagenInvalida:
+        limpio = str(valor).strip()
+        return limpio or None
 
 
-async def _guardar_upload(archivo: UploadFile) -> str:
-    from secrets import token_hex
-
-    extension = TIPOS.get(archivo.content_type or "")
-    if extension is None and archivo.filename:
-        sufijo = Path(archivo.filename).suffix.lower()
-        extension = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}.get(sufijo)
-    if extension is None:
-        raise HTTPException(status_code=422, detail="Solo se aceptan imágenes JPG, PNG o WebP")
+async def _guardar_upload(sesion: AsyncSession, archivo: UploadFile) -> str:
     contenido = await archivo.read()
-    if not contenido or len(contenido) > TOPE:
-        raise HTTPException(status_code=422, detail="La imagen debe pesar entre 1 byte y 5 MB")
-    nombre = f"{token_hex(8)}{extension}"
-    MEDIOS.mkdir(parents=True, exist_ok=True)
-    (MEDIOS / nombre).write_bytes(contenido)
-    return nombre
+    try:
+        mime = validar_imagen(contenido, archivo.content_type)
+        fila = await insertar_imagen(sesion, archivo.filename, mime, contenido)
+    except ImagenInvalida as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return fila["ruta"]
 
 
 async def _slug_libre(sesion: AsyncSession, titulo: str, propio: int | None = None) -> str:
@@ -199,6 +182,7 @@ async def _persistir_anuncio(
     sesion: AsyncSession,
     datos: AnuncioIn,
     imagen: UploadFile | None,
+    imagen_url: str,
     anuncio_id: int | None,
 ) -> dict:
     previa = None
@@ -212,10 +196,15 @@ async def _persistir_anuncio(
     nuevo = None
     if datos.formato == "imagen":
         if imagen is not None and imagen.filename:
-            nuevo = await _guardar_upload(imagen)
+            nuevo = await _guardar_upload(sesion, imagen)
             nombre = nuevo
+        elif imagen_url.strip():
+            try:
+                nombre = normalizar_guardado(imagen_url)
+            except ImagenInvalida as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
         if not nombre:
-            raise HTTPException(status_code=422, detail="La promoción con imagen necesita un archivo")
+            raise HTTPException(status_code=422, detail="La promoción con imagen necesita un archivo o una URL")
     else:
         nombre = None
     valores = {
@@ -273,7 +262,7 @@ async def _persistir_anuncio(
     anterior = _nombre_archivo(previa["imagen"]) if previa else None
     if nuevo and anterior and anterior != nuevo and re.fullmatch(r"[0-9a-f]{16}\.(jpg|png|webp)", anterior):
         (MEDIOS / anterior).unlink(missing_ok=True)
-    return {"id": guardado, "formato": datos.formato, "imagen": f"/medios/{nombre}" if nombre else None}
+    return {"id": guardado, "formato": datos.formato, "imagen": url_publica(nombre)}
 
 
 @router.post("/anuncios", status_code=201)
@@ -288,6 +277,7 @@ async def crear_anuncio(
     inicio: str = Form(),
     fin: str = Form(),
     imagen: UploadFile | None = File(default=None),
+    imagen_url: str = Form(default=""),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     datos = _anuncio_modelo(
@@ -301,7 +291,7 @@ async def crear_anuncio(
         inicio=inicio,
         fin=fin,
     )
-    return await _persistir_anuncio(sesion, datos, imagen, None)
+    return await _persistir_anuncio(sesion, datos, imagen, imagen_url, None)
 
 
 @router.patch("/anuncios/{anuncio_id}")
@@ -317,6 +307,7 @@ async def editar_anuncio(
     inicio: str = Form(),
     fin: str = Form(),
     imagen: UploadFile | None = File(default=None),
+    imagen_url: str = Form(default=""),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     datos = _anuncio_modelo(
@@ -330,7 +321,7 @@ async def editar_anuncio(
         inicio=inicio,
         fin=fin,
     )
-    return await _persistir_anuncio(sesion, datos, imagen, anuncio_id)
+    return await _persistir_anuncio(sesion, datos, imagen, imagen_url, anuncio_id)
 
 
 @router.delete("/anuncios/{anuncio_id}", status_code=204)
@@ -357,25 +348,21 @@ async def subir_imagen(
     titulo: str = Form(min_length=2, max_length=140),
     categoria: str = Form(),
     descripcion: str = Form(default=""),
-    archivo: UploadFile = File(),
+    enlace: str = Form(default=""),
+    archivo: UploadFile | None = File(default=None),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     if categoria not in ("buses", "destinos", "terminales"):
         raise HTTPException(status_code=422, detail="Categoría de galería no válida")
-    extension = TIPOS.get(archivo.content_type or "")
-    if extension is None and archivo.filename:
-        sufijo = Path(archivo.filename).suffix.lower()
-        extension = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}.get(sufijo)
-    if extension is None:
-        raise HTTPException(status_code=422, detail="Solo se aceptan imágenes JPG, PNG o WebP")
-    contenido = await archivo.read()
-    if not contenido or len(contenido) > TOPE:
-        raise HTTPException(status_code=422, detail="La imagen debe pesar entre 1 byte y 5 MB")
-    from secrets import token_hex
-
-    nombre = f"{token_hex(8)}{extension}"
-    MEDIOS.mkdir(parents=True, exist_ok=True)
-    (MEDIOS / nombre).write_bytes(contenido)
+    if archivo is not None and archivo.filename:
+        nombre = await _guardar_upload(sesion, archivo)
+    elif enlace.strip():
+        try:
+            nombre = normalizar_guardado(enlace)
+        except ImagenInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    else:
+        raise HTTPException(status_code=422, detail="Suba una imagen JPG, PNG, WebP o GIF, o pegue una URL")
     try:
         resultado = await sesion.execute(
             text(
@@ -393,10 +380,11 @@ async def subir_imagen(
         )
         await sesion.commit()
     except SQLAlchemyError as exc:
-        (MEDIOS / nombre).unlink(missing_ok=True)
+        if nombre and re.fullmatch(r"[0-9a-f]{16}\.(jpg|png|webp|gif)", nombre):
+            (MEDIOS / nombre).unlink(missing_ok=True)
         await sesion.rollback()
         traducir_error_mysql(exc)
-    return {"id": resultado.lastrowid, "archivo": nombre, "url": f"/medios/{nombre}"}
+    return {"id": resultado.lastrowid, "archivo": nombre, "url": url_publica(nombre)}
 
 
 @router.delete("/galeria/{imagen_id}", status_code=204)

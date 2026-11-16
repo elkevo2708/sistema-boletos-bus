@@ -37,7 +37,7 @@ docker compose up --build
 - API y documentación: http://localhost:8000/docs
 - MySQL: `localhost:3306`, base `boletos`, usuario `boletos`, contraseña `boletos`
 
-La primera arrancada crea el esquema, los disparadores, el evento que expira reservas y los datos de prueba (ciudades del Ecuador, rutas, noticias, anuncios y fotos). Los horarios están en hora de Ecuador (UTC−5). Al arrancar, el backend aplica `database/migracion_horarios.sql` (la misma copia vive en `backend/app/sql/`): crea la tabla `horarios` y, sin borrar viajes ni ciudades, deja dos salidas diarias en ambos sentidos entre las ciudades de la semilla para los próximos 30 días. Se puede volver a ejecutar; solo inserta lo que falta. En taquilla, **Generar salidas** hace lo mismo. Las imágenes de la galería viven en el volumen `medios`, montado en `/app/medios`, y se sirven en `/medios`.
+La primera arrancada crea el esquema, los disparadores, el evento que expira reservas y los datos de prueba (ciudades del Ecuador, rutas, noticias, anuncios y fotos). Los horarios están en hora de Ecuador (UTC−5). Al arrancar, el backend aplica `database/migracion_horarios.sql` (la misma copia vive en `backend/app/sql/`): crea la tabla `horarios` y, sin borrar viajes ni ciudades, deja dos salidas diarias en ambos sentidos entre las ciudades de la semilla para los próximos 30 días. Se puede volver a ejecutar; solo inserta lo que falta. En taquilla, **Generar salidas** hace lo mismo. Las fotos que ya estaban en la semilla siguen en el volumen `medios`, montado en `/app/medios`, y se sirven en `/medios`. Las que se suben desde el panel quedan en MySQL; ver la sección Imágenes del panel.
 
 Para volver a cargar la semilla hay que borrar también los volúmenes:
 
@@ -91,6 +91,22 @@ PayPhone: `POST /api/button/Prepare` (montos en centavos, `clientTransactionId`,
 ## Portada
 
 En taquilla, **Portada** crea diapositivas de imagen o de video (MP4, WebM, YouTube o Vimeo), con título, subtítulo, botón, orden, ámbito (`portal` o `transporte`) y un interruptor de activo. La vista previa usa los mismos datos. En el inicio el video se reproduce solo, sin sonido y en bucle; si no puede, queda la foto de respaldo. El inicio del portal muestra las diapositivas de ámbito `portal`. Transporte conserva la foto del bus y la tarjeta de búsqueda queda encima.
+
+## Imágenes del panel
+
+En las fichas de turismo, la agenda, la galería del portal, la portada (foto y póster del video), los anuncios, las noticias y la galería de transporte se puede subir una imagen desde el computador o el celular, o pegar una URL que ya exista. En el celular, **Galería** abre las fotos y **Cámara** abre la cámara. Se aceptan JPG, PNG, WebP y GIF de hasta 5 MB. Mientras sube se ve el estado «Subiendo imagen…» y la vista previa.
+
+El archivo se guarda en la tabla `imagenes`: nombre, tipo MIME, tamaño y el binario. El campo del contenido queda apuntando a `/medios/bd/{id}`. Esa ruta es pública (la página la muestra sin sesión). La subida sí pide la misma sesión del panel: `administrador`, `operador_turismo`, `operador_transporte` u `operador_taxi`.
+
+Al arrancar, el backend aplica `database/migracion_imagenes.sql` (la misma copia vive en `backend/app/sql/`). Crea la tabla si no existe y alarga las columnas donde se guarda la ruta. No borra boletos ni las fotos que ya estaban en disco.
+
+El `frontend/nginx.conf` de este repositorio ya permite cuerpos de 25 MB (`client_max_body_size 25m`), así que `docker compose` acepta la subida. El nginx del servidor del dueño está fuera del repositorio. Si ese nginx sigue con el límite por defecto de 1 MB, el navegador recibe un 413 y la foto no llega a la API. En el `server` o en el `location` que reenvía `/api/` hay que dejar:
+
+```nginx
+client_max_body_size 8m;
+```
+
+8 MB cubren la foto de 5 MB y el resto del formulario. MySQL 8 trae `max_allowed_packet` en 64 MB. Si en el servidor esa variable estuviera por debajo de 8 MB, la fila no se guardaría: súbala al menos a `16M`.
 
 ## Consulta de cédula
 
@@ -169,7 +185,9 @@ La vista `v_disponibilidad` clasifica cada puesto del viaje en `libre`, `bloquea
 | POST / DELETE | `/admin/viajes` | Crea un viaje. Eliminar lo cancela si no hay pasajes vigentes |
 | PATCH | `/admin/rutas/{id}/tarifa` | Cambia la tarifa y audita |
 | GET | `/admin/ventas?fecha` | Reporte diario |
-| CRUD | `/admin/blog`, `/admin/anuncios`, `/admin/galeria` | Contenido. Anuncios y galería reciben `multipart` (JPG, PNG o WebP, hasta 5 MB). El anuncio de imagen guarda el archivo; el de texto guarda título y mensaje |
+| POST | `/admin/imagenes` | Sube JPG, PNG, WebP o GIF (máx. 5 MB) a la tabla `imagenes`. Requiere sesión del panel. Responde la URL `/medios/bd/{id}` |
+| GET | `/medios/bd/{id}` | Binario público de esa imagen, con su tipo MIME |
+| CRUD | `/admin/blog`, `/admin/anuncios`, `/admin/galeria` | Contenido. La imagen puede ser un archivo (queda en MySQL) o una URL. Anuncios y galería siguen aceptando `multipart` |
 | GET | `/facturacion/consulta?tipo&identificacion` | Razón social local o del proveedor contratado |
 | GET | `/facturacion/mias` | Facturas del cliente |
 | GET | `/facturacion/{id}/ride` y `/xml` | RIDE y XML, del dueño o de taquilla |

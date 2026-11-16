@@ -193,7 +193,7 @@ CREATE TABLE portada (
   origen ENUM('archivo', 'enlace') NOT NULL DEFAULT 'enlace',
   archivo VARCHAR(255) NULL,
   enlace VARCHAR(500) NULL,
-  poster VARCHAR(255) NULL,
+  poster VARCHAR(500) NULL,
   titulo VARCHAR(160) NOT NULL,
   subtitulo VARCHAR(300) NULL,
   texto_boton VARCHAR(80) NULL,
@@ -223,7 +223,7 @@ CREATE TABLE blog_posts (
   resumen VARCHAR(400) NOT NULL,
   cuerpo MEDIUMTEXT NOT NULL,
   categoria ENUM('noticia', 'destino') NOT NULL,
-  imagen VARCHAR(255) NULL,
+  imagen VARCHAR(500) NULL,
   publicado TINYINT(1) NOT NULL DEFAULT 1,
   publicado_en DATETIME NOT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -238,7 +238,7 @@ CREATE TABLE anuncios (
   enlace VARCHAR(255) NULL,
   texto_boton VARCHAR(80) NULL,
   formato ENUM('texto', 'imagen') NOT NULL DEFAULT 'texto',
-  imagen VARCHAR(255) NULL,
+  imagen VARCHAR(500) NULL,
   tipo ENUM('banner', 'modal') NOT NULL DEFAULT 'banner',
   activo TINYINT(1) NOT NULL DEFAULT 1,
   inicio DATE NOT NULL,
@@ -253,10 +253,19 @@ CREATE TABLE galeria (
   titulo VARCHAR(140) NOT NULL,
   descripcion VARCHAR(300) NULL,
   categoria ENUM('buses', 'destinos', 'terminales') NOT NULL,
-  archivo VARCHAR(255) NOT NULL,
+  archivo VARCHAR(500) NOT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_galeria_archivo (archivo),
   KEY idx_galeria_categoria (categoria)
+) ENGINE=InnoDB;
+
+CREATE TABLE imagenes (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(255) NOT NULL,
+  tipo_mime VARCHAR(64) NOT NULL,
+  tamano INT UNSIGNED NOT NULL,
+  contenido LONGBLOB NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE clientes_facturacion (

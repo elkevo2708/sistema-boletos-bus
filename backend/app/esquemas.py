@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.identificacion import CONSUMIDOR_FINAL, ruc_valido, validar_identificacion
+from app.imagenes import ImagenInvalida, normalizar_guardado
 
 
 class RegistroIn(BaseModel):
@@ -207,7 +208,7 @@ class BlogIn(BaseModel):
     resumen: str = Field(min_length=10, max_length=400)
     cuerpo: str = Field(min_length=20, max_length=20000)
     categoria: Literal["noticia", "destino"]
-    imagen: str | None = Field(default=None, max_length=255)
+    imagen: str | None = Field(default=None, max_length=500)
     publicado: bool = True
     publicado_en: datetime
 
@@ -219,12 +220,10 @@ class BlogIn(BaseModel):
     @field_validator("imagen")
     @classmethod
     def imagen_limpia(cls, valor: str | None) -> str | None:
-        if valor is None:
-            return None
-        limpio = valor.strip().lstrip("/")
-        if limpio.startswith("medios/"):
-            limpio = limpio[len("medios/") :]
-        return limpio or None
+        try:
+            return normalizar_guardado(valor)
+        except ImagenInvalida as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class CiudadIn(BaseModel):

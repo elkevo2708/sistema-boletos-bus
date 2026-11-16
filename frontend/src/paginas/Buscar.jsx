@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Bus, CalendarDays, Car, Compass } from 'lucide-react';
 import { solicitar } from '../api';
 import HeroPortada from '../componentes/HeroPortada';
 import { fechaBogota, formatearDia, formatearFechaHora, formatearDinero } from '../formato';
 import { useTextos } from '../textos';
+import { AccesosRapidos, TarjetaSaludo } from '../ui/ui';
 
 const RUTAS = [
   ['La Maná', 'Quevedo', 'Unos 75 minutos por la vía plana hacia Los Ríos.'],
@@ -174,6 +176,20 @@ export default function Buscar() {
         </form>
         {error && <p className="aviso aviso-hero" role="alert">{error}</p>}
       </HeroPortada>
+
+      <div className="pagina inicio-atajos">
+        <TarjetaSaludo
+          titulo="¿A dónde vamos hoy?"
+          bajada="Elige el asiento antes de salir de La Maná."
+          to="/transporte#buscar"
+        />
+        <AccesosRapidos items={[
+          { to: '/transporte#buscar', label: 'Boletos', Icono: Bus },
+          { to: '/taxi', label: 'Taxi', Icono: Car },
+          { to: '/', label: 'Turismo', Icono: Compass },
+          { to: '/agenda', label: 'Agenda', Icono: CalendarDays },
+        ]} />
+      </div>
 
       <section className="cifras" aria-label="La cooperativa en cifras">
         <article><strong>7</strong><span>Ciudades en la red</span></article>

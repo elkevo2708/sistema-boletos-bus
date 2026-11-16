@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { enviarFormulario, solicitar } from '../api';
+import CampoImagen from '../componentes/CampoImagen';
 import CuerpoAnuncio from '../componentes/CuerpoAnuncio';
 import { ahoraBogotaInput, fechaBogota } from '../formato';
+
+function urlDeArchivo(archivo) {
+  if (!archivo) return '';
+  if (archivo.startsWith('http://') || archivo.startsWith('https://') || archivo.startsWith('/')) return archivo;
+  return `/medios/${archivo}`;
+}
 
 function anuncioVacio() {
   return {
@@ -17,20 +24,20 @@ function anuncioVacio() {
   };
 }
 
-function validarAnuncio(campos, archivo, tieneImagen) {
+function validarAnuncio(campos, imagenUrl) {
   if (campos.titulo.trim().length < 3) return 'El título debe tener al menos 3 caracteres.';
   if (!campos.inicio || !campos.fin) return 'Indica el inicio y el fin de la promoción.';
   if (campos.fin < campos.inicio) return 'La fecha final no puede ser anterior al inicio.';
   if (campos.formato === 'texto' && campos.mensaje.trim().length < 8) {
     return 'El mensaje debe tener al menos 8 caracteres.';
   }
-  if (campos.formato === 'imagen' && !archivo && !tieneImagen) {
-    return 'La promoción con imagen necesita un archivo.';
+  if (campos.formato === 'imagen' && !String(imagenUrl || '').trim()) {
+    return 'La promoción con imagen necesita un archivo o una URL.';
   }
   return '';
 }
 
-function formularioAnuncio(campos, archivo) {
+function formularioAnuncio(campos, imagenUrl) {
   const datos = new FormData();
   datos.set('titulo', campos.titulo.trim());
   datos.set('mensaje', campos.mensaje.trim());
@@ -41,7 +48,7 @@ function formularioAnuncio(campos, archivo) {
   datos.set('activo', campos.activo ? 'true' : 'false');
   datos.set('inicio', campos.inicio);
   datos.set('fin', campos.fin);
-  if (archivo) datos.set('imagen', archivo);
+  if (campos.formato === 'imagen' && imagenUrl) datos.set('imagen_url', imagenUrl);
   return datos;
 }
 
@@ -51,6 +58,8 @@ export function PanelBlog({ token }) {
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [editando, setEditando] = useState(null);
+  const [imagen, setImagen] = useState('');
+  const [subiendo, setSubiendo] = useState(false);
 
   async function cargar() {
     const [lista, galeria] = await Promise.all([
@@ -107,6 +116,7 @@ export function PanelBlog({ token }) {
         setAviso('Publicación creada.');
       }
       setEditando(null);
+      setImagen('');
       formulario.reset();
       await cargar();
     } catch (err) {
@@ -120,7 +130,10 @@ export function PanelBlog({ token }) {
     setAviso('');
     try {
       await solicitar(`/admin/blog/${id}`, { method: 'DELETE', token });
-      if (editando === id) setEditando(null);
+      if (editando === id) {
+        setEditando(null);
+        setImagen('');
+      }
       setAviso('Publicación eliminada.');
       await cargar();
     } catch (err) {
@@ -144,11 +157,17 @@ export function PanelBlog({ token }) {
             <option value="destino">Destino</option>
           </select>
         </label>
+        <input type="hidden" name="imagen" value={imagen} />
+        <CampoImagen token={token} valor={imagen} onChange={setImagen} etiqueta="Imagen de la publicación" onSubiendo={setSubiendo} />
         <label>
-          Imagen
-          <select name="imagen" defaultValue={String(actual?.imagen || '').replace(/^\/medios\//, '')} aria-label="Imagen de la publicación">
-            <option value="">Sin imagen</option>
-            {fotos.map((foto) => <option key={foto.id} value={foto.archivo}>{foto.titulo}</option>)}
+          O elija una foto ya publicada en la galería
+          <select
+            value={fotos.some((foto) => urlDeArchivo(foto.archivo) === imagen) ? imagen : ''}
+            onChange={(e) => setImagen(e.target.value)}
+            aria-label="Imagen de la publicación"
+          >
+            <option value="">Sin imagen de la galería</option>
+            {fotos.map((foto) => <option key={foto.id} value={urlDeArchivo(foto.archivo)}>{foto.titulo}</option>)}
           </select>
         </label>
         <label>Fecha<input type="datetime-local" name="publicado_en" defaultValue={actual ? String(actual.publicado_en).replace(' ', 'T').slice(0, 16) : ahoraBogotaInput()} aria-label="Fecha de publicación" /></label>
@@ -156,9 +175,9 @@ export function PanelBlog({ token }) {
         {aviso && <p className="aviso-ok" role="status">{aviso}</p>}
         {error && <p className="aviso" role="alert">{error}</p>}
         <div className="acciones">
-          <button type="submit" className="btn btn-arcilla" aria-label="Guardar publicación">Guardar publicación</button>
+          <button type="submit" className="btn btn-arcilla" disabled={subiendo} aria-label="Guardar publicación">{subiendo ? 'Subiendo imagen…' : 'Guardar publicación'}</button>
           {actual && (
-            <button type="button" className="btn btn-fantasma" onClick={() => setEditando(null)} aria-label="Cancelar edición">Cancelar</button>
+            <button type="button" className="btn btn-fantasma" onClick={() => { setEditando(null); setImagen(''); }} aria-label="Cancelar edición">Cancelar</button>
           )}
         </div>
       </form>
@@ -168,7 +187,7 @@ export function PanelBlog({ token }) {
             <strong>{post.titulo}</strong>
             <span>{post.categoria} · {post.publicado ? 'publicada' : 'borrador'}</span>
             <div>
-              <button type="button" onClick={() => setEditando(post.id)} aria-label={`Editar ${post.titulo}`}>Editar</button>
+              <button type="button" onClick={() => { setEditando(post.id); setImagen(post.imagen || ''); }} aria-label={`Editar ${post.titulo}`}>Editar</button>
               <button type="button" onClick={() => borrar(post.id, post.titulo)} aria-label={`Eliminar ${post.titulo}`}>Eliminar</button>
             </div>
           </li>
@@ -182,9 +201,8 @@ export function PanelAnuncios({ token }) {
   const [lista, setLista] = useState([]);
   const [campos, setCampos] = useState(anuncioVacio);
   const [editando, setEditando] = useState(null);
-  const [archivo, setArchivo] = useState(null);
-  const [fotoLocal, setFotoLocal] = useState('');
-  const [imagenGuardada, setImagenGuardada] = useState('');
+  const [imagenUrl, setImagenUrl] = useState('');
+  const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
 
@@ -198,29 +216,19 @@ export function PanelAnuncios({ token }) {
   }
 
   function limpiarFormulario() {
-    if (fotoLocal) URL.revokeObjectURL(fotoLocal);
     setCampos(anuncioVacio());
     setEditando(null);
-    setArchivo(null);
-    setFotoLocal('');
-    setImagenGuardada('');
-  }
-
-  function elegirArchivo(event) {
-    const file = event.target.files?.[0] || null;
-    if (fotoLocal) URL.revokeObjectURL(fotoLocal);
-    setArchivo(file);
-    setFotoLocal(file ? URL.createObjectURL(file) : '');
+    setImagenUrl('');
   }
 
   async function guardar(event) {
     event.preventDefault();
-    const fallo = validarAnuncio(campos, archivo, Boolean(imagenGuardada));
+    const fallo = validarAnuncio(campos, imagenUrl);
     setError(fallo);
     setAviso('');
     if (fallo) return;
     try {
-      const datos = formularioAnuncio(campos, archivo);
+      const datos = formularioAnuncio(campos, imagenUrl);
       if (editando) {
         await enviarFormulario(`/admin/anuncios/${editando}`, { method: 'PATCH', token, datos });
         setAviso('Anuncio actualizado.');
@@ -236,11 +244,8 @@ export function PanelAnuncios({ token }) {
   }
 
   function editar(anuncio) {
-    if (fotoLocal) URL.revokeObjectURL(fotoLocal);
     setEditando(anuncio.id);
-    setArchivo(null);
-    setFotoLocal('');
-    setImagenGuardada(anuncio.formato === 'imagen' ? (anuncio.imagen || '') : '');
+    setImagenUrl(anuncio.formato === 'imagen' ? (anuncio.imagen || '') : '');
     setCampos({
       titulo: anuncio.titulo || '',
       mensaje: anuncio.mensaje || '',
@@ -293,7 +298,7 @@ export function PanelAnuncios({ token }) {
     }
   }
 
-  const foto = fotoLocal || (campos.formato === 'imagen' ? imagenGuardada : '');
+  const foto = campos.formato === 'imagen' ? imagenUrl : '';
 
   return (
     <div className="rejilla-admin">
@@ -314,10 +319,7 @@ export function PanelAnuncios({ token }) {
         {campos.formato === 'texto' ? (
           <label>Mensaje<textarea value={campos.mensaje} onChange={(e) => asignar('mensaje', e.target.value)} rows={4} aria-label="Mensaje del anuncio" /></label>
         ) : (
-          <label>
-            Imagen
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={elegirArchivo} aria-label="Imagen de la promoción" />
-          </label>
+          <CampoImagen token={token} valor={imagenUrl} onChange={setImagenUrl} etiqueta="Imagen de la promoción" onSubiendo={setSubiendo} />
         )}
         <label>Texto del botón<input value={campos.texto_boton} onChange={(e) => asignar('texto_boton', e.target.value)} aria-label="Texto del botón" placeholder="Ver más" /></label>
         <label>Enlace<input value={campos.enlace} onChange={(e) => asignar('enlace', e.target.value)} placeholder="/noticias/..." aria-label="Enlace del anuncio" /></label>
@@ -339,7 +341,7 @@ export function PanelAnuncios({ token }) {
         {aviso && <p className="aviso-ok" role="status">{aviso}</p>}
         {error && <p className="aviso" role="alert">{error}</p>}
         <div className="acciones">
-          <button type="submit" className="btn btn-arcilla" aria-label="Publicar anuncio">{editando ? 'Guardar cambios' : 'Publicar anuncio'}</button>
+          <button type="submit" className="btn btn-arcilla" disabled={subiendo} aria-label="Publicar anuncio">{subiendo ? 'Subiendo imagen…' : (editando ? 'Guardar cambios' : 'Publicar anuncio')}</button>
           {editando && (
             <button type="button" className="btn btn-fantasma" onClick={limpiarFormulario} aria-label="Cancelar edición del anuncio">Cancelar</button>
           )}
@@ -374,6 +376,11 @@ export function PanelAnuncios({ token }) {
 
 export function PanelGaleria({ token }) {
   const [fotos, setFotos] = useState([]);
+  const [titulo, setTitulo] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [categoria, setCategoria] = useState('buses');
+  const [imagen, setImagen] = useState('');
+  const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
 
@@ -384,25 +391,28 @@ export function PanelGaleria({ token }) {
 
   async function subir(event) {
     event.preventDefault();
-    const datos = new FormData(event.currentTarget);
-    const titulo = String(datos.get('titulo') || '').trim();
-    const archivo = datos.get('archivo');
     setError('');
     setAviso('');
-    if (titulo.length < 2) {
+    if (titulo.trim().length < 2) {
       setError('El título debe tener al menos 2 caracteres.');
       return;
     }
-    if (!archivo || !archivo.name) {
-      setError('Elige una imagen JPG, PNG o WebP.');
+    if (!imagen.trim()) {
+      setError('Suba una imagen JPG, PNG, WebP o GIF, o pegue una URL.');
       return;
     }
-    datos.set('titulo', titulo);
-    const formulario = event.currentTarget;
+    const datos = new FormData();
+    datos.set('titulo', titulo.trim());
+    datos.set('descripcion', descripcion.trim());
+    datos.set('categoria', categoria);
+    datos.set('enlace', imagen.trim());
     try {
       await enviarFormulario('/admin/galeria', { method: 'POST', token, datos });
       setAviso('Imagen publicada en la galería.');
-      formulario.reset();
+      setTitulo('');
+      setDescripcion('');
+      setCategoria('buses');
+      setImagen('');
       await cargar();
     } catch (err) {
       setError(err.message);
@@ -426,20 +436,20 @@ export function PanelGaleria({ token }) {
     <div>
       <form className="panel-form panel-corto" noValidate onSubmit={subir}>
         <h2>Subir imagen</h2>
-        <label>Título<input name="titulo" aria-label="Título de la imagen" /></label>
-        <label>Descripción<input name="descripcion" aria-label="Descripción de la imagen" /></label>
+        <label>Título<input value={titulo} onChange={(e) => setTitulo(e.target.value)} aria-label="Título de la imagen" /></label>
+        <label>Descripción<input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} aria-label="Descripción de la imagen" /></label>
         <label>
           Categoría
-          <select name="categoria" defaultValue="buses" aria-label="Categoría de la imagen">
+          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} aria-label="Categoría de la imagen">
             <option value="buses">Buses</option>
             <option value="destinos">Destinos</option>
             <option value="terminales">Terminales</option>
           </select>
         </label>
-        <label>Archivo<input name="archivo" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Archivo de imagen" /></label>
+        <CampoImagen token={token} valor={imagen} onChange={setImagen} etiqueta="Archivo" onSubiendo={setSubiendo} />
         {aviso && <p className="aviso-ok" role="status">{aviso}</p>}
         {error && <p className="aviso" role="alert">{error}</p>}
-        <button type="submit" className="btn btn-arcilla" aria-label="Subir imagen a la galería">Subir imagen</button>
+        <button type="submit" className="btn btn-arcilla" disabled={subiendo} aria-label="Subir imagen a la galería">{subiendo ? 'Subiendo imagen…' : 'Subir imagen'}</button>
       </form>
       <div className="mosaico admin-mosaico">
         {fotos.map((foto) => (
