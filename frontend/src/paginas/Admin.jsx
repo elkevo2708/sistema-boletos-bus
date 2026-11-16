@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Bell, Bus, Car, Compass, CreditCard, FileText, Images, LayoutDashboard, LogOut,
+  Bell, BookOpen, Bus, Car, Compass, CreditCard, FileText, Images, LayoutDashboard, LogOut,
   Mail, Map, Megaphone, Moon, Newspaper, PanelLeft, Route, Search, Settings, Sun, Image as ImagenIcon,
 } from 'lucide-react';
 import { solicitar } from '../api';
@@ -15,6 +15,7 @@ import PanelFlota from './AdminFlota';
 import AdminPagos from './AdminPagos';
 import AdminPortada from './AdminPortada';
 import AdminTaxis from './AdminTaxis';
+import AdminCursos from './AdminCursos';
 import AdminTurismo from './AdminTurismo';
 import EditorTextos from './EditorTextos';
 import InicioEspacios from './InicioEspacios';
@@ -44,7 +45,8 @@ function menuDe(puede) {
       ficha('hospedaje', 'Hospedaje', '/hospedaje', 'Tipos de alojamiento.', 'Página Hospedaje.', Map),
       ficha('actividad', 'Actividades', '/actividades', 'Caminata, río y bosque.', 'Página Vive.', Map),
       ficha('ruta', 'Rutas del cantón', '/rutas', 'Recorridos de un día, no los buses.', 'Página Rutas del portal.', Route),
-      ficha('guia', 'Aprende', '/aprende', 'Cómo llegar y lo práctico.', 'Página Aprende.', Compass),
+      ficha('cursos', 'Aprende (cursos)', '/aprende', 'Cursos, lecciones, artículos e inscritos.', 'La portada de Aprende y cada ficha de curso.', BookOpen),
+      ficha('guia', 'Guías prácticas', '/aprende/guias', 'Cómo llegar y lo práctico.', 'Guías dentro de Aprende.', Compass),
       ficha('emprendimiento', 'Emprendimientos', '/emprendimientos', 'Fichas de negocios. Las de ejemplo siguen marcadas.', 'Página Emprendimientos.', Map),
       ficha('directorio', 'Directorio', '/directorio', 'Servicios del cantón.', 'Página Directorio.', FileText),
       ficha('agenda', 'Agenda', '/agenda', 'Fechas que se publican en el inicio.', 'Agenda y el bloque de fechas del inicio.', Newspaper),
@@ -469,6 +471,7 @@ export default function Admin() {
           {espacio === 'portal' && ['atractivo', 'parroquia', 'gastronomia', 'hospedaje', 'actividad', 'ruta', 'guia', 'emprendimiento', 'directorio'].includes(seccion) && (
             <AdminTurismo token={token} vista="fichas" tipo={seccion} fijo />
           )}
+          {espacio === 'portal' && seccion === 'cursos' && <AdminCursos token={token} />}
           {espacio === 'portal' && seccion === 'agenda' && <AdminTurismo token={token} vista="eventos" fijo />}
           {espacio === 'portal' && seccion === 'galeria' && <AdminTurismo token={token} vista="galeria" fijo />}
           {espacio === 'portal' && seccion === 'mensajes' && <AdminTurismo token={token} vista="mensajes" fijo />}

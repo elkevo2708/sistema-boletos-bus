@@ -36,6 +36,8 @@ async def asegurar_esquema() -> None:
     await _ejemplo_taxi()
     from app.textos_semilla import asegurar_textos
     await asegurar_textos()
+    from app.cursos_semilla import asegurar_cursos
+    await asegurar_cursos()
 
 
 def _sentencias(contenido: str) -> list[str]:
@@ -112,6 +114,10 @@ async def _ejemplo_taxi() -> None:
         columnas = (await conexion.execute(text("SHOW COLUMNS FROM taxi_viajes"))).all()
     if "ejemplo" not in {fila[0] for fila in columnas}:
         await _ejecutar("ALTER TABLE taxi_viajes ADD COLUMN ejemplo TINYINT(1) NOT NULL DEFAULT 0 AFTER comentario")
+    async with engine.connect() as conexion:
+        columnas_conductor = (await conexion.execute(text("SHOW COLUMNS FROM taxi_conductores"))).all()
+    if "rumbo" not in {fila[0] for fila in columnas_conductor}:
+        await _ejecutar("ALTER TABLE taxi_conductores ADD COLUMN rumbo SMALLINT NULL AFTER lng")
 
 
 async def _aplicar_archivo(ruta: Path) -> None:

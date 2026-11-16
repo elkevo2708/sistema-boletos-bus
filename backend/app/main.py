@@ -16,6 +16,7 @@ from app.migraciones import asegurar_esquema
 from app.routers import admin, admin_contenido, auth, boletos, ciudades, contenido, facturacion, pagos_publico, panel, portada, taxi, tiempo_real, turismo, viajes
 from app.routers import dashboard as tablero
 from app.routers import textos as textos_sitio
+from app.routers import cursos as portal_cursos
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("lamana")
@@ -67,6 +68,7 @@ app.include_router(taxi.router)
 app.include_router(panel.router)
 app.include_router(tablero.router)
 app.include_router(textos_sitio.router)
+app.include_router(portal_cursos.router)
 app.include_router(tiempo_real.router)
 Path("/app/medios").mkdir(parents=True, exist_ok=True)
 app.mount("/medios", StaticFiles(directory="/app/medios"), name="medios")

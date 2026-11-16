@@ -5,24 +5,17 @@ import 'leaflet/dist/leaflet.css';
 import { solicitar } from '../api';
 import { useTextos } from '../textos';
 import { useAuth } from '../contexto/AuthContext';
+import { iconoPin, iconoTaxi, limpiarMarcas, ponerMarca, recordarRumbo } from '../ui/mapaTaxi';
 
 const CENTRO = [-0.9406, -79.2344];
-
-function icono(color) {
-  return L.divIcon({
-    className: 'pin-taxi',
-    html: `<span style="background:${color}"></span>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-  });
-}
 
 export default function Taxi() {
   const { token, usuario } = useAuth();
   const t = useTextos('taxi');
   const caja = useRef(null);
   const mapa = useRef(null);
-  const marcas = useRef([]);
+  const marcas = useRef(new Map());
+  const rumbos = useRef(new Map());
   const [origen, setOrigen] = useState({ lat: CENTRO[0], lng: CENTRO[1] });
   const [destino, setDestino] = useState(null);
   const [cercanos, setCercanos] = useState(null);
@@ -60,31 +53,42 @@ export default function Taxi() {
 
   useEffect(() => {
     if (!token) return undefined;
-    solicitar(`/taxi/cercanos?lat=${origen.lat}&lng=${origen.lng}`, { token })
+    const leer = () => solicitar(`/taxi/cercanos?lat=${origen.lat}&lng=${origen.lng}`, { token })
       .then(setCercanos)
-      .catch((err) => setAviso(err.message));
-    return undefined;
+      .catch((err) => { if (err.status !== 429) setAviso(err.message); });
+    leer();
+    const reloj = setInterval(leer, 5000);
+    return () => clearInterval(reloj);
   }, [token, origen.lat, origen.lng]);
 
   useEffect(() => {
     if (!mapa.current) return;
-    marcas.current.forEach((marca) => marca.remove());
-    marcas.current = [];
-    const origenMarca = L.marker([origen.lat, origen.lng], { icon: icono('#0c2f6b'), draggable: true }).addTo(mapa.current);
-    origenMarca.on('dragend', () => {
-      const punto = origenMarca.getLatLng();
-      setOrigen({ lat: punto.lat, lng: punto.lng });
-    });
-    marcas.current.push(origenMarca);
-    (cercanos?.taxis || []).forEach((taxi, indice) => {
-      const marca = L.marker([taxi.lat, taxi.lng], { icon: icono(indice === 0 ? '#f2c200' : '#1497b8') }).addTo(mapa.current);
-      marca.bindTooltip(`Unidad ${taxi.unidad} · ${taxi.distancia_km} km`);
-      marcas.current.push(marca);
+    const vistos = new Set(['origen']);
+    const origenMarca = ponerMarca(L, mapa.current, marcas.current, 'origen', [origen.lat, origen.lng], iconoPin(L, 'origen'), { draggable: true });
+    if (!origenMarca._lamana) {
+      origenMarca._lamana = true;
+      origenMarca.on('dragend', () => {
+        const punto = origenMarca.getLatLng();
+        setOrigen({ lat: punto.lat, lng: punto.lng });
+      });
+    }
+    const asignado = viaje?.conductor?.id;
+    (cercanos?.taxis || []).forEach((taxi) => {
+      const clave = `taxi-${taxi.id}`;
+      vistos.add(clave);
+      const rumbo = recordarRumbo(rumbos.current, taxi.id, taxi, taxi.rumbo);
+      const marca = ponerMarca(
+        L, mapa.current, marcas.current, clave, [taxi.lat, taxi.lng],
+        iconoTaxi(L, { estado: taxi.estado, rumbo, propio: asignado === taxi.id }),
+      );
+      marca.bindTooltip(`Unidad ${taxi.unidad} · ${taxi.distancia_km ?? ''} km`);
     });
     if (destino) {
-      marcas.current.push(L.marker([destino.lat, destino.lng], { icon: icono('#2f9e3a') }).addTo(mapa.current));
+      vistos.add('destino');
+      ponerMarca(L, mapa.current, marcas.current, 'destino', [destino.lat, destino.lng], iconoPin(L, 'destino'));
     }
-  }, [origen, cercanos, destino]);
+    limpiarMarcas(marcas.current, vistos);
+  }, [origen, cercanos, destino, viaje]);
 
   useEffect(() => {
     if (!token || !destino) return;

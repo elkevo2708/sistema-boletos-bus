@@ -422,9 +422,9 @@ async def _taxi(sesion, hoy, ayer, desde, hasta):
         await sesion.execute(
             text(
                 """
-                SELECT id, numero_unidad, lat, lng, estado, ejemplo
+                SELECT id, numero_unidad, lat, lng, rumbo, estado, ejemplo
                   FROM taxi_conductores
-                 WHERE activo = 1 AND estado = 'disponible' AND lat IS NOT NULL AND lng IS NOT NULL
+                 WHERE activo = 1 AND estado IN ('disponible', 'ocupado') AND lat IS NOT NULL AND lng IS NOT NULL
                  ORDER BY numero_unidad
                 """
             )
@@ -464,6 +464,7 @@ async def _taxi(sesion, hoy, ayer, desde, hasta):
                 "unidad": fila["numero_unidad"],
                 "lat": float(fila["lat"]),
                 "lng": float(fila["lng"]),
+                "rumbo": int(fila["rumbo"]) if fila["rumbo"] is not None else None,
                 "estado": fila["estado"],
                 "ejemplo": bool(fila["ejemplo"]),
             }

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import MapaFlota from './MapaFlota';
 import { CalendarPlus, MapPinned, Plus, Route, TrendingDown, TrendingUp } from 'lucide-react';
 import { fechaBogota, formatearDia, formatearFechaHora, formatearPesos } from '../formato';
 import { GraficoBarras, GraficoHoras, GraficoLinea } from '../ui/Graficos';
@@ -25,50 +25,6 @@ function tonoEstado(estado) {
   if (['aprobado', 'finalizado', 'pagado'].includes(estado)) return 'verde';
   if (['cancelado', 'rechazado'].includes(estado)) return 'peligro';
   return 'amarillo';
-}
-
-function MapaTaxis({ unidades }) {
-  const caja = useRef(null);
-  const mapa = useRef(null);
-  const clave = unidades.map((unidad) => unidad.id).join(',');
-
-  useEffect(() => {
-    let cancelado = false;
-    (async () => {
-      const leaflet = await import('leaflet');
-      await import('leaflet/dist/leaflet.css');
-      if (cancelado || !caja.current) return;
-      const L = leaflet.default ?? leaflet;
-      const lienzo = L.map(caja.current, { zoomControl: false }).setView([-0.9406, -79.2344], 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 19,
-      }).addTo(lienzo);
-      unidades.forEach((unidad) => {
-        const marca = L.marker([unidad.lat, unidad.lng], {
-          icon: L.divIcon({
-            className: 'pin-taxi',
-            html: `<span style="background:${unidad.ejemplo ? '#1497b8' : '#f2c200'}"></span>`,
-            iconSize: [18, 18],
-            iconAnchor: [9, 9],
-          }),
-        }).addTo(lienzo);
-        marca.bindTooltip(`Unidad ${unidad.unidad}${unidad.ejemplo ? ' · ejemplo' : ''}`);
-      });
-      if (unidades.length) {
-        lienzo.fitBounds(L.latLngBounds(unidades.map((unidad) => [unidad.lat, unidad.lng])).pad(0.35));
-      }
-      mapa.current = lienzo;
-      setTimeout(() => lienzo.invalidateSize(), 180);
-    })();
-    return () => {
-      cancelado = true;
-      mapa.current?.remove();
-      mapa.current = null;
-    };
-  }, [clave]);
-
-  return <div ref={caja} className="saas-mapa" role="img" aria-label="Mapa de taxis en línea" />;
 }
 
 export default function PanelResumen({ tablero, cargando, error, rango, onRango, onConsultar, onIr, puede }) {
@@ -254,7 +210,7 @@ export default function PanelResumen({ tablero, cargando, error, rango, onRango,
         {taxi && (
           <section className="panel-form">
             <h2>Taxis en línea</h2>
-            {taxi.unidades.length ? <MapaTaxis unidades={taxi.unidades} /> : <EstadoVacio titulo="Nadie en línea" texto="Cuando un conductor se conecte, aparece en este mapa." />}
+            {taxi.unidades.length ? <MapaFlota unidades={taxi.unidades} /> : <EstadoVacio titulo="Nadie en línea" texto="Cuando un conductor se conecte, aparece en este mapa." />}
           </section>
         )}
       </div>

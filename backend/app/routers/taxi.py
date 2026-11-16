@@ -45,6 +45,8 @@ def _publico_conductor(fila: dict | None) -> dict | None:
         "foto": fila.get("foto"),
         "lat": _num(fila.get("lat")),
         "lng": _num(fila.get("lng")),
+        "estado": fila.get("estado") or "disponible",
+        "rumbo": int(fila["rumbo"]) if fila.get("rumbo") is not None else None,
         "distancia_km": _num(fila.get("km")) if fila.get("km") is not None else None,
     }
 
@@ -332,14 +334,14 @@ async def cercanos(
         await sesion.execute(
             text(
                 """
-                SELECT c.id, c.numero_unidad, c.placa, c.foto, c.lat, c.lng, u.nombre,
+                SELECT c.id, c.numero_unidad, c.placa, c.foto, c.lat, c.lng, c.estado, c.rumbo, u.nombre,
                        (6371 * ACOS(LEAST(1,
                           COS(RADIANS(:lat)) * COS(RADIANS(c.lat)) * COS(RADIANS(c.lng) - RADIANS(:lng))
                           + SIN(RADIANS(:lat)) * SIN(RADIANS(c.lat))
                        ))) AS km
                   FROM taxi_conductores c
                   JOIN usuarios u ON u.id = c.usuario_id
-                 WHERE c.activo = 1 AND c.estado = 'disponible' AND c.lat IS NOT NULL
+                 WHERE c.activo = 1 AND c.estado IN ('disponible', 'ocupado') AND c.lat IS NOT NULL
                    AND c.lat BETWEEN :lat - 0.2 AND :lat + 0.2
                    AND c.lng BETWEEN :lng - 0.2 AND :lng + 0.2
                    AND c.ubicacion_en >= NOW() - INTERVAL 6 HOUR
@@ -356,7 +358,8 @@ async def cercanos(
         item["eta_min"] = minutos_por_haversine(float(fila["km"]))
         item["distancia_km"] = round(float(fila["km"]), 3)
         lista.append(item)
-    return {"taxis": lista, "mas_cercano": lista[0] if lista else None}
+    libres = [item for item in lista if item.get("estado") != "ocupado"]
+    return {"taxis": lista, "mas_cercano": libres[0] if libres else None}
 
 
 @router.get("/taxi/ruta")
@@ -788,16 +791,17 @@ async def simular(_: dict = Depends(exigir_pasajero), sesion: AsyncSession = Dep
         angulo = fase + indice * (math.tau / max(1, len(filas)))
         lat = CENTRO[0] + 0.004 * math.cos(angulo)
         lng = CENTRO[1] + 0.004 * math.sin(angulo)
+        rumbo = int((math.degrees(angulo) + 90) % 360)
         await sesion.execute(
             text(
                 """
                 UPDATE taxi_conductores
-                   SET lat = :lat, lng = :lng, ubicacion_en = NOW(),
+                   SET lat = :lat, lng = :lng, rumbo = :rumbo, ubicacion_en = NOW(),
                        estado = IF(estado = 'fuera', 'disponible', estado)
                  WHERE id = :id AND estado <> 'ocupado'
                 """
             ),
-            {"lat": round(lat, 6), "lng": round(lng, 6), "id": fila[0]},
+            {"lat": round(lat, 6), "lng": round(lng, 6), "rumbo": rumbo, "id": fila[0]},
         )
     await sesion.commit()
     await _broadcast(sesion)
@@ -825,7 +829,7 @@ async def resumen_taxi(_: dict = Depends(exigir_taxi), sesion: AsyncSession = De
         await sesion.execute(
             text(
                 """
-                SELECT c.id, c.numero_unidad, c.placa, c.estado, c.lat, c.lng, c.ejemplo, u.nombre, p.nombre AS compania
+                SELECT c.id, c.numero_unidad, c.placa, c.estado, c.lat, c.lng, c.rumbo, c.ejemplo, u.nombre, p.nombre AS compania
                   FROM taxi_conductores c
                   JOIN usuarios u ON u.id = c.usuario_id
                   JOIN taxi_companias p ON p.id = c.compania_id
@@ -849,6 +853,7 @@ async def resumen_taxi(_: dict = Depends(exigir_taxi), sesion: AsyncSession = De
                 "estado": fila["estado"],
                 "lat": _num(fila["lat"]),
                 "lng": _num(fila["lng"]),
+                "rumbo": int(fila["rumbo"]) if fila["rumbo"] is not None else None,
                 "compania": fila["compania"],
                 "ejemplo": bool(fila["ejemplo"]),
             }

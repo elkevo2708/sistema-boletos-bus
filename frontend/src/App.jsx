@@ -6,6 +6,9 @@ import PortalInicio from './paginas/PortalInicio';
 import { Esqueleto } from './ui/ui';
 
 const Admin = lazy(() => import('./paginas/Admin'));
+const Aprende = lazy(() => import('./paginas/Aprende'));
+const AprendeArticulo = lazy(() => import('./paginas/AprendeArticulo'));
+const AprendeCurso = lazy(() => import('./paginas/AprendeCurso'));
 const Asientos = lazy(() => import('./paginas/Asientos'));
 const Blog = lazy(() => import('./paginas/Blog'));
 const BlogDetalle = lazy(() => import('./paginas/BlogDetalle'));
@@ -45,7 +48,10 @@ export default function App() {
       <Route element={<PortalLayout />}>
         <Route path="/" element={<Carga><PortalInicio /></Carga>} />
         <Route path="/explorar" element={<Carga><PortalExplorar /></Carga>} />
-        <Route path="/aprende" element={<Carga><PortalLista tipo="guia" titulo="Aprende" bajada="Cómo llegar, el clima y lo práctico, sin cifras inventadas." /></Carga>} />
+        <Route path="/aprende" element={<Carga><Aprende /></Carga>} />
+        <Route path="/aprende/cursos/:slug" element={<Carga><AprendeCurso /></Carga>} />
+        <Route path="/aprende/articulos/:slug" element={<Carga><AprendeArticulo /></Carga>} />
+        <Route path="/aprende/guias" element={<Carga><PortalLista tipo="guia" titulo="Guías prácticas" bajada="Cómo llegar y lo práctico, sin cifras inventadas." /></Carga>} />
         <Route path="/aprende/:slug" element={<Carga><PortalFicha tipo="guia" volver="Aprende" /></Carga>} />
         <Route path="/atractivos" element={<Carga><PortalLista tipo="atractivo" titulo="Descubre" bajada="Río, cascadas, pueblo y fincas del cantón." imagen="/turismo/panoramica.jpg" /></Carga>} />
         <Route path="/atractivos/:slug" element={<Carga><PortalFicha tipo="atractivo" volver="Descubre" /></Carga>} />

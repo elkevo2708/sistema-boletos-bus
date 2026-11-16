@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { solicitar } from '../api';
+import MapaFlota from './MapaFlota';
 
 export default function AdminTaxis({ token }) {
   const [resumen, setResumen] = useState(null);
@@ -21,6 +22,8 @@ export default function AdminTaxis({ token }) {
 
   useEffect(() => {
     cargar().catch((err) => setError(err.message));
+    const reloj = setInterval(() => cargar().catch(() => {}), 8000);
+    return () => clearInterval(reloj);
   }, [token]);
 
   async function guardarTarifa(event, tarifaId) {
@@ -58,6 +61,11 @@ export default function AdminTaxis({ token }) {
           <article><strong>{resumen.companias}</strong><span>Compañías</span></article>
         </div>
       )}
+      <section className="panel-form">
+        <h2>Mapa de unidades</h2>
+        <p className="meta">Amarillo es libre, gris está ocupado. El icono apunta hacia donde se mueve.</p>
+        <MapaFlota unidades={(resumen?.flota || []).filter((item) => item.lat != null)} />
+      </section>
       <div className="rejilla-admin">
         <section className="panel-form">
           <h2>Flota en vivo</h2>

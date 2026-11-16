@@ -589,6 +589,13 @@ tfoot th { font-size: 1.05rem; }
 .portal-desplegable a:hover, .portal-item-movil:hover { background: #f4f8fc; }
 .portal-movil-items { display: grid; }
 
+.mapa-taxi-icono, .mapa-pin-icono { background: none !important; border: 0 !important; }
+.mapa-taxi { width: 48px; height: 48px; filter: drop-shadow(0 2px 2px rgba(12, 47, 107, 0.35)); transition: transform 0.6s linear; }
+.mapa-taxi.propio { box-shadow: 0 0 0 3px #1f8a32; border-radius: 50%; }
+.mapa-taxi.ocupado { opacity: 0.85; }
+.leaflet-marker-icon { transition: transform 0.7s linear; }
+.mapa-pin { width: 28px; height: 28px; border-radius: 50% 50% 50% 0; background: var(--pin); transform: rotate(-45deg); margin: 4px auto 0; box-shadow: 0 2px 4px rgba(12,47,107,.35); display: grid; place-items: center; }
+.mapa-pin span { transform: rotate(45deg); color: #fff; font-family: var(--display); font-weight: 800; font-size: 0.85rem; }
 .pin-taxi span { display: block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--marino); }
 .taxi-pagina { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 380px); min-height: calc(100dvh - var(--alto-barra) - 6px); background: #d5e0ea; }
 .taxi-mapa { min-height: 480px; height: 100%; position: relative; z-index: 1; }
@@ -735,6 +742,17 @@ tfoot th { font-size: 1.05rem; }
   box-shadow: var(--sombra); max-width: min(360px, calc(100% - 2rem));
 }
 .editor-textos { display: grid; gap: var(--s-4); }
+.rejilla-cursos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s-4); }
+.tarjeta-curso { background: #fff; border: 1px solid var(--linea); border-radius: var(--r-lg); overflow: hidden; display: grid; }
+.tarjeta-curso img { width: 100%; aspect-ratio: 16/10; object-fit: cover; }
+.tarjeta-curso > div, .tarjeta-curso { padding: var(--s-3); }
+.tarjeta-curso h3 { margin: 0.2rem 0; }
+.tarjeta-curso h3 a { color: var(--marino); text-decoration: none; }
+.curso-meta { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.curso-categorias { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-4); }
+.curso-categorias button { min-height: 44px; border-radius: var(--r-full); border: 1px solid var(--linea); background: #fff; padding: 0 var(--s-3); font: inherit; font-weight: 700; cursor: pointer; }
+.curso-categorias button.activo { background: var(--marino); color: #fff; }
+.curso-video { width: 100%; aspect-ratio: 16/9; border: 0; border-radius: var(--r-md); }
 
 .saas { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 100dvh; background: var(--papel); color: var(--tinta); }
 .saas.colapsado { grid-template-columns: 84px minmax(0, 1fr); }

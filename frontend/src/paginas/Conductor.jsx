@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { solicitar } from '../api';
 import MarcaPortal from '../componentes/MarcaPortal';
 import { useAuth } from '../contexto/AuthContext';
 import { Aviso, Boton, EstadoVacio } from '../ui/ui';
+import { rumboEntre } from '../ui/mapaTaxi';
+import MapaFlota from './MapaFlota';
 
 export default function Conductor() {
   const { token, usuario } = useAuth();
@@ -11,11 +13,18 @@ export default function Conductor() {
   const [linea, setLinea] = useState(false);
   const [aviso, setAviso] = useState('');
   const [coords, setCoords] = useState(null);
+  const ultimo = useRef(null);
 
   useEffect(() => {
     if (!token || usuario?.rol !== 'conductor') return undefined;
     const vigilar = navigator.geolocation?.watchPosition(
-      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        const punto = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const brujula = Number.isFinite(pos.coords.heading) ? pos.coords.heading : rumboEntre(ultimo.current, punto);
+        punto.rumbo = brujula == null ? (ultimo.current?.rumbo ?? 0) : Math.round((brujula + 360) % 360);
+        ultimo.current = punto;
+        setCoords(punto);
+      },
       () => setCoords({ lat: -0.9406, lng: -79.2344 }),
       { enableHighAccuracy: true, maximumAge: 4000 },
     );
@@ -85,6 +94,12 @@ export default function Conductor() {
         <p className="sobrelinea">Conductor</p>
         <h1>{usuario.nombre}</h1>
         <p className="meta">{coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : 'Esperando GPS. Si falla, se usa el centro de La Maná.'}</p>
+        <MapaFlota
+          altura={320}
+          propioId="yo"
+          destino={viaje?.destino}
+          unidades={coords ? [{ id: 'yo', lat: coords.lat, lng: coords.lng, estado: viaje ? 'ocupado' : 'disponible', unidad: 'Yo', rumbo: coords.rumbo }] : []}
+        />
         <Boton tamano="lg" onClick={lineaToggle} aria-label={linea ? 'Salir de línea' : 'Ponerme en línea'}>
           {linea ? 'Salir de línea' : 'Ponerme en línea'}
         </Boton>
