@@ -1,6 +1,7 @@
 """Taxis del cantón: solicitud, asignación al más cercano y tablero."""
 
 import math
+import secrets
 from datetime import datetime, time, timedelta
 
 import httpx
@@ -43,6 +44,7 @@ def _publico_conductor(fila: dict | None) -> dict | None:
         "unidad": fila.get("numero_unidad"),
         "placa": fila.get("placa"),
         "foto": fila.get("foto"),
+        "telefono": fila.get("telefono"),
         "lat": _num(fila.get("lat")),
         "lng": _num(fila.get("lng")),
         "estado": fila.get("estado") or "disponible",
@@ -72,6 +74,13 @@ def _viaje(fila: dict, conductor: dict | None = None) -> dict:
         "pasajero_nombre": fila.get("pasajero_nombre"),
         "conductor": conductor,
         "ejemplo_tarifa": True,
+        "codigo": fila.get("codigo"),
+        "pasajeros": int(fila.get("pasajeros") or 1),
+        "nota": fila.get("nota") or "",
+        "propina": None if fila.get("propina") is None else float(fila.get("propina") or 0),
+        "servicio": fila.get("servicio") or "estandar",
+        "seguimiento": fila.get("seguimiento"),
+        "ofrecido_hasta": fila["ofrecido_hasta"].isoformat(sep=" ") if fila.get("ofrecido_hasta") else None,
     }
 
 
@@ -107,6 +116,7 @@ async def _broadcast(sesion: AsyncSession, viaje_id: int | None = None) -> None:
     if viaje_id is not None:
         publico = await _leer_viaje(sesion, viaje_id)
         if publico is not None:
+            publico.pop("codigo", None)
             await gestor_taxi.emitir_viaje(viaje_id, {"tipo": "viaje", "viaje": publico})
 
 
@@ -116,7 +126,8 @@ async def _leer_viaje(sesion: AsyncSession, viaje_id: int) -> dict | None:
             text(
                 """
                 SELECT v.*, u.nombre AS pasajero_nombre,
-                       c.id AS conductor_id, cu.nombre AS nombre, c.numero_unidad, c.placa, c.foto, c.lat, c.lng
+                       c.id AS conductor_id, cu.nombre AS nombre, cu.telefono AS telefono,
+                       c.numero_unidad, c.placa, c.foto, c.lat, c.lng
                   FROM taxi_viajes v
                   JOIN usuarios u ON u.id = v.pasajero_id
                   LEFT JOIN taxi_conductores c ON c.id = COALESCE(v.conductor_id, v.ofrecido_conductor_id)
@@ -375,25 +386,44 @@ async def ruta(
     return await _ruta((origen_lat, origen_lng), (destino_lat, destino_lng))
 
 
+def _factor_servicio(servicio: str) -> float:
+    return {"estandar": 1.0, "camioneta": 1.35}.get(servicio, 1.0)
+
+
 @router.get("/taxi/cotizar")
 async def cotizar(
     origen_lat: float,
     origen_lng: float,
     destino_lat: float,
     destino_lng: float,
+    servicio: str = "estandar",
     _: dict = Depends(exigir_pasajero),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
     _exigir_coords(origen_lat, origen_lng)
     _exigir_coords(destino_lat, destino_lng)
+    if servicio not in ("estandar", "camioneta"):
+        raise HTTPException(status_code=422, detail="El servicio es estándar o camioneta")
     trayecto = await _ruta((origen_lat, origen_lng), (destino_lat, destino_lng))
     tarifa = await _tarifa_activa(sesion)
-    precio = _precio(tarifa, trayecto["distancia_km"], trayecto["duracion_min"])
+    ahora = ahora_colombia()
+    nocturno = es_nocturno(ahora, _como_hora(tarifa["noche_desde"]), _como_hora(tarifa["noche_hasta"]))
+    precio = round(_precio(tarifa, trayecto["distancia_km"], trayecto["duracion_min"]) * _factor_servicio(servicio), 2)
     return {
         **trayecto,
         "tarifa_estimada": precio,
+        "servicio": servicio,
         "ejemplo": bool(tarifa["ejemplo"]),
         "compania": tarifa["compania"],
+        "nocturno": nocturno,
+        "desglose": {
+            "arranque": float(tarifa["arranque"]),
+            "por_km": round(trayecto["distancia_km"] * float(tarifa["costo_km"]), 2),
+            "por_minuto": round(trayecto["duracion_min"] * float(tarifa["costo_minuto"]), 2),
+            "recargo_nocturno_pct": float(tarifa["recargo_nocturno_pct"]) if nocturno else 0,
+            "factor_servicio": _factor_servicio(servicio),
+            "minima": float(tarifa["tarifa_minima"]),
+        },
         "aviso": "Tarifa de ejemplo, no es la tarifa oficial de una cooperativa.",
     }
 
@@ -451,9 +481,18 @@ async def solicitar(
         raise HTTPException(status_code=422, detail="Método de pago no reconocido")
     if metodo != "efectivo" and settings.pagos_modo != "sandbox":
         raise HTTPException(status_code=422, detail="En vivo el taxi se cobra en efectivo")
+    servicio = cuerpo.get("servicio") or "estandar"
+    if servicio not in ("estandar", "camioneta"):
+        raise HTTPException(status_code=422, detail="El servicio es estándar o camioneta")
+    try:
+        pasajeros = int(cuerpo.get("pasajeros") or 1)
+    except (TypeError, ValueError):
+        pasajeros = 0
+    if pasajeros < 1 or pasajeros > 6:
+        raise HTTPException(status_code=422, detail="El taxi lleva de 1 a 6 pasajeros")
     trayecto = await _ruta(origen, destino)
     tarifa = await _tarifa_activa(sesion)
-    precio = _precio(tarifa, trayecto["distancia_km"], trayecto["duracion_min"])
+    precio = round(_precio(tarifa, trayecto["distancia_km"], trayecto["duracion_min"]) * _factor_servicio(servicio), 2)
     pago_estado = "no_aplica" if metodo == "efectivo" else "aprobado"
     try:
         await liberar_vencidas(sesion)
@@ -462,10 +501,12 @@ async def solicitar(
                 """
                 INSERT INTO taxi_viajes (
                   pasajero_id, compania_id, estado, origen_lat, origen_lng, destino_lat, destino_lng,
-                  destino_texto, distancia_km, duracion_min, tarifa_estimada, metodo_pago, pago_estado
+                  destino_texto, distancia_km, duracion_min, tarifa_estimada, metodo_pago, pago_estado,
+                  codigo, pasajeros, nota, servicio, seguimiento
                 ) VALUES (
                   :pasajero, :compania, 'solicitado', :olat, :olng, :dlat, :dlng,
-                  :texto, :km, :minutos, :precio, :metodo, :pago
+                  :texto, :km, :minutos, :precio, :metodo, :pago,
+                  :codigo, :pasajeros, :nota, :servicio, :seguimiento
                 )
                 """
             ),
@@ -482,6 +523,11 @@ async def solicitar(
                 "precio": precio,
                 "metodo": metodo,
                 "pago": pago_estado,
+                "codigo": f"{secrets.randbelow(10000):04d}",
+                "pasajeros": pasajeros,
+                "nota": str(cuerpo.get("nota") or "")[:180],
+                "servicio": servicio,
+                "seguimiento": secrets.token_hex(4),
             },
         )
         viaje_id = resultado.lastrowid
@@ -516,6 +562,8 @@ async def ver_viaje(
     es_conductor = conductor is not None and dueno["conductor_id"] == conductor["id"]
     if not es_pasajero and not es_conductor and usuario["rol"] not in ("administrador", "operador_taxi"):
         raise HTTPException(status_code=403, detail="Este viaje no es tuyo")
+    if not es_pasajero and usuario["rol"] not in ("administrador", "operador_taxi"):
+        publico.pop("codigo", None)
     return publico
 
 
@@ -567,9 +615,16 @@ async def calificar(
         estrellas = 0
     if estrellas < 1 or estrellas > 5:
         raise HTTPException(status_code=422, detail="La calificación va de 1 a 5")
+    propina = cuerpo.get("propina")
+    try:
+        propina = None if propina in (None, "") else round(float(propina), 2)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="La propina debe ser un monto")
+    if propina is not None and (propina < 0 or propina > 50):
+        raise HTTPException(status_code=422, detail="La propina va de 0 a 50 dólares")
     await sesion.execute(
-        text("UPDATE taxi_viajes SET calificacion = :e, comentario = :c WHERE id = :id"),
-        {"e": estrellas, "c": str(cuerpo.get("comentario") or "")[:300], "id": viaje_id},
+        text("UPDATE taxi_viajes SET calificacion = :e, comentario = :c, propina = :p WHERE id = :id"),
+        {"e": estrellas, "c": str(cuerpo.get("comentario") or "")[:300], "p": propina, "id": viaje_id},
     )
     await sesion.commit()
     return await _leer_viaje(sesion, viaje_id)
@@ -622,9 +677,14 @@ async def ubicacion(
     except (KeyError, TypeError, ValueError):
         raise HTTPException(status_code=422, detail="Latitud y longitud numéricas")
     _exigir_coords(lat, lng)
+    rumbo = cuerpo.get("rumbo")
+    try:
+        rumbo = int(rumbo) % 360 if rumbo is not None else conductor.get("rumbo")
+    except (TypeError, ValueError):
+        rumbo = conductor.get("rumbo")
     await sesion.execute(
-        text("UPDATE taxi_conductores SET lat = :lat, lng = :lng, ubicacion_en = NOW() WHERE id = :id"),
-        {"lat": lat, "lng": lng, "id": conductor["id"]},
+        text("UPDATE taxi_conductores SET lat = :lat, lng = :lng, rumbo = :rumbo, ubicacion_en = NOW() WHERE id = :id"),
+        {"lat": lat, "lng": lng, "rumbo": rumbo, "id": conductor["id"]},
     )
     await sesion.commit()
     await _broadcast(sesion)
@@ -641,7 +701,7 @@ async def viaje_conductor(usuario: dict = Depends(usuario_actual), sesion: Async
             text(
                 """
                 SELECT id FROM taxi_viajes
-                 WHERE estado IN ('solicitado', 'asignado', 'en_camino', 'a_bordo')
+                 WHERE estado IN ('solicitado', 'asignado', 'en_camino', 'llego', 'a_bordo')
                    AND (conductor_id = :id OR ofrecido_conductor_id = :id)
                  ORDER BY id DESC
                  LIMIT 1
@@ -652,7 +712,10 @@ async def viaje_conductor(usuario: dict = Depends(usuario_actual), sesion: Async
     ).mappings().first()
     if fila is None:
         return None
-    return await _leer_viaje(sesion, fila["id"])
+    publico = await _leer_viaje(sesion, fila["id"])
+    if publico:
+        publico.pop("codigo", None)
+    return publico
 
 
 @router.post("/taxi/conductor/viajes/{viaje_id}/aceptar")
@@ -680,7 +743,7 @@ async def aceptar(
             text(
                 """
                 SELECT id FROM taxi_viajes
-                 WHERE conductor_id = :id AND estado IN ('asignado', 'en_camino', 'a_bordo')
+                 WHERE conductor_id = :id AND estado IN ('asignado', 'en_camino', 'llego', 'a_bordo')
                  FOR UPDATE
                 """
             ),
@@ -701,7 +764,10 @@ async def aceptar(
     )
     await sesion.commit()
     await _broadcast(sesion, viaje_id)
-    return await _leer_viaje(sesion, viaje_id)
+    publico = await _leer_viaje(sesion, viaje_id)
+    if publico:
+        publico.pop("codigo", None)
+    return publico
 
 
 @router.post("/taxi/conductor/viajes/{viaje_id}/rechazar")
@@ -731,7 +797,10 @@ async def rechazar(
     await asignar(sesion, viaje_id)
     await sesion.commit()
     await _broadcast(sesion, viaje_id)
-    return await _leer_viaje(sesion, viaje_id)
+    publico = await _leer_viaje(sesion, viaje_id)
+    if publico:
+        publico.pop("codigo", None)
+    return publico
 
 
 @router.post("/taxi/conductor/viajes/{viaje_id}/estado")
@@ -748,9 +817,11 @@ async def avanzar(
     ).mappings().first()
     if viaje is None or viaje["conductor_id"] != conductor["id"]:
         raise HTTPException(status_code=404, detail="Viaje no encontrado")
-    orden = {"asignado": "en_camino", "en_camino": "a_bordo", "a_bordo": "finalizado"}
+    orden = {"asignado": "en_camino", "en_camino": "llego", "llego": "a_bordo", "a_bordo": "finalizado"}
     if orden.get(viaje["estado"]) != destino:
         raise HTTPException(status_code=409, detail="Ese cambio de estado no corresponde")
+    if destino == "a_bordo" and str(cuerpo.get("codigo") or "") != str(viaje.get("codigo") or ""):
+        raise HTTPException(status_code=422, detail="El código de verificación no coincide")
     if destino == "finalizado":
         await sesion.execute(
             text(
@@ -773,7 +844,10 @@ async def avanzar(
         )
     await sesion.commit()
     await _broadcast(sesion, viaje_id)
-    return await _leer_viaje(sesion, viaje_id)
+    publico = await _leer_viaje(sesion, viaje_id)
+    if publico:
+        publico.pop("codigo", None)
+    return publico
 
 
 @router.post("/taxi/demo/simular")
@@ -947,3 +1021,181 @@ async def historial(_: dict = Depends(exigir_taxi), sesion: AsyncSession = Depen
         }
         for fila in filas
     ]
+
+
+@router.get("/taxi/lugares")
+async def lugares(_: dict = Depends(exigir_pasajero), sesion: AsyncSession = Depends(obtener_sesion)):
+    filas = (
+        await sesion.execute(
+            text("SELECT id, nombre, tipo, lat, lng FROM taxi_lugares ORDER BY tipo, nombre LIMIT 40")
+        )
+    ).mappings().all()
+    return [{"id": f["id"], "nombre": f["nombre"], "tipo": f["tipo"], "lat": float(f["lat"]), "lng": float(f["lng"])} for f in filas]
+
+
+@router.get("/taxi/servicios")
+async def servicios(_: dict = Depends(exigir_pasajero)):
+    return [
+        {"codigo": "estandar", "nombre": "Estándar", "factor": 1},
+        {"codigo": "camioneta", "nombre": "Camioneta", "factor": 1.35, "nota": "Ejemplo: recargo sobre la tarifa base"},
+    ]
+
+
+@router.get("/taxi/guardados")
+async def guardados(usuario: dict = Depends(exigir_pasajero), sesion: AsyncSession = Depends(obtener_sesion)):
+    filas = (
+        await sesion.execute(
+            text("SELECT id, etiqueta, texto, lat, lng FROM taxi_guardados WHERE usuario_id = :u ORDER BY etiqueta"),
+            {"u": usuario["id"]},
+        )
+    ).mappings().all()
+    return [{"id": f["id"], "etiqueta": f["etiqueta"], "texto": f["texto"], "lat": float(f["lat"]), "lng": float(f["lng"])} for f in filas]
+
+
+@router.post("/taxi/guardados", status_code=201)
+async def guardar_lugar(cuerpo: dict, usuario: dict = Depends(exigir_pasajero), sesion: AsyncSession = Depends(obtener_sesion)):
+    etiqueta = (cuerpo.get("etiqueta") or "").strip().lower()
+    if etiqueta not in ("casa", "trabajo"):
+        raise HTTPException(status_code=422, detail="La etiqueta es casa o trabajo")
+    try:
+        lat, lng = float(cuerpo["lat"]), float(cuerpo["lng"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Latitud y longitud numéricas")
+    _exigir_coords(lat, lng)
+    await sesion.execute(
+        text(
+            """
+            INSERT INTO taxi_guardados (usuario_id, etiqueta, texto, lat, lng)
+            VALUES (:u, :e, :t, :lat, :lng)
+            ON DUPLICATE KEY UPDATE texto = VALUES(texto), lat = VALUES(lat), lng = VALUES(lng)
+            """
+        ),
+        {"u": usuario["id"], "e": etiqueta, "t": str(cuerpo.get("texto") or etiqueta)[:120], "lat": lat, "lng": lng},
+    )
+    await sesion.commit()
+    return {"etiqueta": etiqueta}
+
+
+@router.get("/taxi/mis-viajes")
+async def mis_viajes(usuario: dict = Depends(exigir_pasajero), sesion: AsyncSession = Depends(obtener_sesion)):
+    filas = (
+        await sesion.execute(
+            text(
+                """
+                SELECT id, estado, destino_texto, tarifa_estimada, tarifa_final, propina, calificacion, creado_en, servicio
+                  FROM taxi_viajes WHERE pasajero_id = :u ORDER BY id DESC LIMIT 20
+                """
+            ),
+            {"u": usuario["id"]},
+        )
+    ).mappings().all()
+    return [
+        {
+            "id": f["id"],
+            "estado": f["estado"],
+            "destino_texto": f["destino_texto"],
+            "tarifa_estimada": float(f["tarifa_estimada"] or 0),
+            "tarifa_final": None if f["tarifa_final"] is None else float(f["tarifa_final"]),
+            "propina": None if f["propina"] is None else float(f["propina"]),
+            "calificacion": f["calificacion"],
+            "servicio": f["servicio"],
+            "creado_en": f["creado_en"].isoformat() if f["creado_en"] else None,
+        }
+        for f in filas
+    ]
+
+
+@router.get("/taxi/seguimiento/{token}")
+async def seguimiento(token: str, sesion: AsyncSession = Depends(obtener_sesion)):
+    fila = (
+        await sesion.execute(text("SELECT id FROM taxi_viajes WHERE seguimiento = :t"), {"t": token[:16]})
+    ).first()
+    if fila is None:
+        raise HTTPException(status_code=404, detail="No encontramos ese viaje")
+    publico = await _leer_viaje(sesion, fila[0])
+    if publico:
+        publico.pop("codigo", None)
+        if publico.get("conductor"):
+            publico["conductor"].pop("telefono", None)
+    return publico
+
+
+@router.post("/taxi/sos", status_code=201)
+async def sos(cuerpo: dict, usuario: dict = Depends(exigir_pasajero), sesion: AsyncSession = Depends(obtener_sesion)):
+    try:
+        lat, lng = float(cuerpo["lat"]), float(cuerpo["lng"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Latitud y longitud numéricas")
+    _exigir_coords(lat, lng)
+    await sesion.execute(
+        text("INSERT INTO taxi_sos (usuario_id, viaje_id, lat, lng) VALUES (:u, :v, :lat, :lng)"),
+        {"u": usuario["id"], "v": cuerpo.get("viaje_id"), "lat": lat, "lng": lng},
+    )
+    await sesion.commit()
+    return {"emergencia": "911", "lat": lat, "lng": lng}
+
+
+@router.get("/taxi/conductor/ganancias")
+async def ganancias(usuario: dict = Depends(usuario_actual), sesion: AsyncSession = Depends(obtener_sesion)):
+    conductor = await _conductor_de(sesion, usuario["id"])
+    fila = (
+        await sesion.execute(
+            text(
+                """
+                SELECT
+                  COALESCE(SUM(CASE WHEN DATE(creado_en) = CURDATE() THEN COALESCE(tarifa_final, tarifa_estimada) END), 0) AS hoy,
+                  COALESCE(SUM(CASE WHEN creado_en >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) THEN COALESCE(tarifa_final, tarifa_estimada) END), 0) AS semana,
+                  COUNT(*) AS viajes,
+                  ROUND(AVG(calificacion), 1) AS nota
+                  FROM taxi_viajes
+                 WHERE conductor_id = :id AND estado = 'finalizado'
+                """
+            ),
+            {"id": conductor["id"]},
+        )
+    ).mappings().one()
+    return {"hoy": float(fila["hoy"]), "semana": float(fila["semana"]), "viajes": int(fila["viajes"]), "nota": fila["nota"]}
+
+
+@router.get("/admin/taxi/sos")
+async def listar_sos(_: dict = Depends(exigir_taxi), sesion: AsyncSession = Depends(obtener_sesion)):
+    filas = (
+        await sesion.execute(
+            text(
+                """
+                SELECT s.id, s.lat, s.lng, s.viaje_id, s.creado_en, u.nombre
+                  FROM taxi_sos s JOIN usuarios u ON u.id = s.usuario_id
+                 ORDER BY s.id DESC LIMIT 30
+                """
+            )
+        )
+    ).mappings().all()
+    return [
+        {
+            "id": f["id"],
+            "lat": float(f["lat"]),
+            "lng": float(f["lng"]),
+            "viaje_id": f["viaje_id"],
+            "nombre": f["nombre"],
+            "creado_en": f["creado_en"].isoformat() if f["creado_en"] else None,
+        }
+        for f in filas
+    ]
+
+
+@router.get("/admin/taxi/reportes")
+async def reportes(_: dict = Depends(exigir_taxi), sesion: AsyncSession = Depends(obtener_sesion)):
+    por_dia = (
+        await sesion.execute(
+            text(
+                """
+                SELECT DATE(creado_en) AS dia, COUNT(*) AS viajes,
+                       COALESCE(SUM(COALESCE(tarifa_final, tarifa_estimada)), 0) AS ingresos
+                  FROM taxi_viajes
+                 WHERE estado = 'finalizado' AND creado_en >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
+                 GROUP BY DATE(creado_en) ORDER BY dia
+                """
+            )
+        )
+    ).mappings().all()
+    return {"por_dia": [{"dia": str(f["dia"]), "viajes": int(f["viajes"]), "ingresos": float(f["ingresos"])} for f in por_dia]}

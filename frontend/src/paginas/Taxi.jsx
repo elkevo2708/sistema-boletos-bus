@@ -24,7 +24,14 @@ export default function Taxi() {
   const [aviso, setAviso] = useState('');
   const [consulta, setConsulta] = useState('');
   const [lugares, setLugares] = useState([]);
+  const [frecuentes, setFrecuentes] = useState([]);
+  const [historial, setHistorial] = useState([]);
   const [metodo, setMetodo] = useState('efectivo');
+  const [servicio, setServicio] = useState('estandar');
+  const [pasajeros, setPasajeros] = useState(1);
+  const [nota, setNota] = useState('');
+  const [estrellas, setEstrellas] = useState(5);
+  const ruta = useRef(null);
 
   useEffect(() => {
     if (!caja.current || mapa.current) return undefined;
@@ -91,15 +98,32 @@ export default function Taxi() {
   }, [origen, cercanos, destino, viaje]);
 
   useEffect(() => {
+    if (!mapa.current) return;
+    if (ruta.current) {
+      mapa.current.removeLayer(ruta.current);
+      ruta.current = null;
+    }
+    if (!cotizacion?.geometria) return;
+    ruta.current = L.geoJSON(cotizacion.geometria, { style: { color: '#1f8a32', weight: 5, opacity: 0.9 } }).addTo(mapa.current);
+  }, [cotizacion]);
+
+  useEffect(() => {
+    if (!token) return;
+    solicitar('/taxi/lugares', { token }).then(setFrecuentes).catch(() => {});
+    solicitar('/taxi/mis-viajes', { token }).then(setHistorial).catch(() => {});
+  }, [token, viaje?.estado]);
+
+  useEffect(() => {
     if (!token || !destino) return;
     const params = new URLSearchParams({
       origen_lat: origen.lat,
       origen_lng: origen.lng,
       destino_lat: destino.lat,
       destino_lng: destino.lng,
+      servicio,
     });
     solicitar(`/taxi/cotizar?${params}`, { token }).then(setCotizacion).catch((err) => setAviso(err.message));
-  }, [token, origen, destino]);
+  }, [token, origen, destino, servicio]);
 
   useEffect(() => {
     if (!viaje?.id || !token || ['finalizado', 'cancelado'].includes(viaje.estado)) return undefined;
@@ -107,7 +131,7 @@ export default function Taxi() {
     const socket = new WebSocket(`${protocolo}://${window.location.host}/ws/taxi/viajes/${viaje.id}?token=${encodeURIComponent(token)}`);
     socket.onmessage = (evento) => {
       const data = JSON.parse(evento.data);
-      if (data.viaje) setViaje(data.viaje);
+      if (data.viaje) setViaje((previo) => ({ ...data.viaje, codigo: data.viaje.codigo || previo?.codigo }));
     };
     const reloj = setInterval(() => {
       solicitar(`/taxi/viajes/${viaje.id}`, { token }).then(setViaje).catch(() => {});
@@ -157,6 +181,9 @@ export default function Taxi() {
           destino_lng: destino.lng,
           destino_texto: destino.texto,
           metodo_pago: metodo,
+          servicio,
+          pasajeros: Number(pasajeros),
+          nota,
         },
       });
       setViaje(creado);
@@ -173,11 +200,55 @@ export default function Taxi() {
       <aside className="taxi-panel">
         <span className="taxi-asa" aria-hidden="true" />
         <p className="sobrelinea">{t('taxi.kicker', 'Taxi · La Maná')}</p>
-        <h1>{t('taxi.titulo', 'Pide un taxi')}</h1>
+        <h1>{viaje ? ({
+          solicitado: 'Buscando conductor',
+          asignado: 'Conductor asignado',
+          en_camino: 'El conductor va hacia ti',
+          llego: 'El conductor llegó',
+          a_bordo: 'En viaje',
+          finalizado: 'Viaje finalizado',
+          cancelado: 'Viaje cancelado',
+        }[viaje.estado] || 'Pide un taxi') : t('taxi.titulo', 'Pide un taxi')}</h1>
+        {viaje && (
+          <article className="taxi-estado">
+            {viaje.codigo && <p className="taxi-codigo">Código para el conductor: <strong>{viaje.codigo}</strong></p>}
+            {viaje.conductor && (
+              <p>
+                {viaje.conductor.nombre} · unidad {viaje.conductor.unidad} · placa {viaje.conductor.placa}
+                {viaje.conductor.telefono && (
+                  <>
+                    {' '}<a href={`tel:${viaje.conductor.telefono}`}>Llamar</a>
+                    {' '}<a href={`https://wa.me/${viaje.conductor.telefono.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                  </>
+                )}
+              </p>
+            )}
+            <p>Tarifa de ejemplo ${Number(viaje.tarifa_estimada).toFixed(2)} · pago {viaje.metodo_pago}</p>
+            {viaje.seguimiento && (
+              <p className="meta">Seguimiento: {window.location.origin}/taxi?seguimiento={viaje.seguimiento}</p>
+            )}
+            {viaje.estado === 'finalizado' && viaje.calificacion == null && (
+              <div className="opciones-tarjeta" role="radiogroup" aria-label="Calificación">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button key={n} type="button" className={estrellas === n ? 'activo' : ''} onClick={() => setEstrellas(n)}>{n}</button>
+                ))}
+                <button type="button" className="btn btn-portal" onClick={() => solicitar(`/taxi/viajes/${viaje.id}/calificar`, { method: 'POST', token, body: { estrellas } }).then(setViaje)}>
+                  Enviar calificación
+                </button>
+              </div>
+            )}
+            {!['finalizado', 'cancelado', 'a_bordo'].includes(viaje.estado) && (
+              <button type="button" className="btn btn-fantasma" onClick={() => solicitar(`/taxi/viajes/${viaje.id}/cancelar`, { method: 'POST', token }).then(setViaje)}>Cancelar</button>
+            )}
+            <button type="button" className="btn btn-fantasma" onClick={() => solicitar('/taxi/sos', { method: 'POST', token, body: { lat: origen.lat, lng: origen.lng, viaje_id: viaje.id } }).then((alerta) => setAviso(`Emergencia ${alerta.emergencia}. Ubicación compartida.`)).catch((err) => setAviso(err.message))}>
+              SOS · 911
+            </button>
+          </article>
+        )}
         {!usuario && (
           <p>Para ver unidades y pedir un viaje, <Link to="/ingresar?siguiente=/taxi">ingresa</Link>.</p>
         )}
-        {usuario && (
+        {usuario && !viaje && (
           <>
             <button type="button" className="btn btn-portal" onClick={ubicar}>Usar mi ubicación</button>
             <p className="meta">{t('taxi.ayuda', 'Si el GPS no responde, arrastra el pin azul. El centro del mapa es la cabecera, cerca de -0.94, -79.23.')}</p>
@@ -199,10 +270,34 @@ export default function Taxi() {
                 </li>
               ))}
             </ul>
+            {frecuentes.length > 0 && (
+              <div className="opciones-tarjeta" aria-label="Lugares frecuentes">
+                {frecuentes.map((lugar) => (
+                  <button key={lugar.id} type="button" onClick={() => setDestino({ lat: lugar.lat, lng: lugar.lng, texto: lugar.nombre })}>
+                    {lugar.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="opciones-tarjeta" role="radiogroup" aria-label="Tipo de servicio">
+              {[['estandar', 'Estándar'], ['camioneta', 'Camioneta']].map(([valor, etiqueta]) => (
+                <button key={valor} type="button" role="radio" aria-checked={servicio === valor} className={servicio === valor ? 'activo' : ''} onClick={() => setServicio(valor)}>
+                  {etiqueta}
+                </button>
+              ))}
+            </div>
+            <label>Pasajeros
+              <input type="number" min="1" max="6" value={pasajeros} onChange={(e) => setPasajeros(e.target.value)} aria-label="Número de pasajeros" />
+            </label>
+            <label>Nota para el conductor
+              <input value={nota} onChange={(e) => setNota(e.target.value)} maxLength={180} aria-label="Nota para el conductor" />
+            </label>
             {cotizacion && (
               <p>
                 Ruta {cotizacion.fuente === 'osrm' ? 'por calles' : 'estimada'}: {cotizacion.distancia_km} km · {cotizacion.duracion_min} min.
-                Tarifa de ejemplo <strong>${Number(cotizacion.tarifa_estimada).toFixed(2)}</strong>. {cotizacion.aviso}
+                Tarifa de ejemplo <strong>${Number(cotizacion.tarifa_estimada).toFixed(2)}</strong>
+                {cotizacion.nocturno ? ` · recargo nocturno ${cotizacion.desglose?.recargo_nocturno_pct}%` : ''}.
+                {' '}Arranque ${Number(cotizacion.desglose?.arranque || 0).toFixed(2)}, km ${Number(cotizacion.desglose?.por_km || 0).toFixed(2)}, minutos ${Number(cotizacion.desglose?.por_minuto || 0).toFixed(2)}. {cotizacion.aviso}
               </p>
             )}
             <div className="opciones-tarjeta" role="radiogroup" aria-label="Método de pago del taxi">
@@ -227,20 +322,15 @@ export default function Taxi() {
             <button type="button" className="btn btn-portal" disabled={!destino} onClick={pedir}>Solicitar taxi</button>
           </>
         )}
-        {viaje && (
-          <article>
-            <h2>Viaje {viaje.estado.replace('_', ' ')}</h2>
-            {viaje.conductor && <p>Unidad {viaje.conductor.unidad} · {viaje.conductor.nombre} · placa {viaje.conductor.placa}</p>}
-            <p>Tarifa de ejemplo ${Number(viaje.tarifa_estimada).toFixed(2)} · pago {viaje.metodo_pago} ({viaje.pago_estado})</p>
-            {viaje.estado === 'finalizado' && viaje.calificacion == null && (
-              <button type="button" className="btn btn-portal" onClick={() => solicitar(`/taxi/viajes/${viaje.id}/calificar`, { method: 'POST', token, body: { estrellas: 5 } }).then(setViaje)}>
-                Calificar con 5
-              </button>
-            )}
-            {!['finalizado', 'cancelado', 'a_bordo'].includes(viaje.estado) && (
-              <button type="button" className="btn btn-fantasma" onClick={() => solicitar(`/taxi/viajes/${viaje.id}/cancelar`, { method: 'POST', token }).then(setViaje)}>Cancelar</button>
-            )}
-          </article>
+        {historial.length > 0 && (
+          <details>
+            <summary>Mis viajes</summary>
+            <ul className="lista-admin">
+              {historial.map((item) => (
+                <li key={item.id}>{item.destino_texto || 'Viaje'} · {item.estado} · ${Number(item.tarifa_final ?? item.tarifa_estimada).toFixed(2)}</li>
+              ))}
+            </ul>
+          </details>
         )}
         {aviso && <p className="aviso" role="alert">{aviso}</p>}
       </aside>

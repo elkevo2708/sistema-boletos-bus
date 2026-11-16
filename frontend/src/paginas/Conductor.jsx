@@ -13,6 +13,9 @@ export default function Conductor() {
   const [linea, setLinea] = useState(false);
   const [aviso, setAviso] = useState('');
   const [coords, setCoords] = useState(null);
+  const [codigo, setCodigo] = useState('');
+  const [ganancias, setGanancias] = useState(null);
+  const [resto, setResto] = useState(null);
   const ultimo = useRef(null);
 
   useEffect(() => {
@@ -50,6 +53,25 @@ export default function Conductor() {
     const reloj = setInterval(leer, 3000);
     return () => clearInterval(reloj);
   }, [token, usuario]);
+
+  useEffect(() => {
+    if (!token || usuario?.rol !== 'conductor') return;
+    solicitar('/taxi/conductor/ganancias', { token }).then(setGanancias).catch(() => {});
+  }, [token, usuario, viaje?.estado]);
+
+  useEffect(() => {
+    if (!viaje?.ofrecido_hasta || viaje.estado !== 'solicitado') {
+      setResto(null);
+      return undefined;
+    }
+    const marcar = () => {
+      const fin = new Date(`${viaje.ofrecido_hasta.replace(' ', 'T')}-05:00`).getTime();
+      setResto(Math.max(0, Math.round((fin - Date.now()) / 1000)));
+    };
+    marcar();
+    const reloj = setInterval(marcar, 1000);
+    return () => clearInterval(reloj);
+  }, [viaje]);
 
   async function lineaToggle() {
     try {
@@ -94,31 +116,45 @@ export default function Conductor() {
         <p className="sobrelinea">Conductor</p>
         <h1>{usuario.nombre}</h1>
         <p className="meta">{coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : 'Esperando GPS. Si falla, se usa el centro de La Maná.'}</p>
+        <Boton tamano="lg" onClick={lineaToggle} aria-label={linea ? 'Salir de línea' : 'Ponerme en línea'}>
+          {linea ? 'Salir de línea' : 'Ponerme en línea'}
+        </Boton>
+        {viaje && (
+          <article className="panel-form">
+            <h2>{viaje.estado === 'solicitado' ? 'Nueva solicitud' : viaje.estado.replaceAll('_', ' ')}</h2>
+            <p>Pasajero {viaje.pasajero_nombre}. Destino: {viaje.destino?.texto || 'punto en el mapa'}.</p>
+            <p>Tarifa de ejemplo ${Number(viaje.tarifa_estimada).toFixed(2)}{resto != null ? ` · ${resto}s para responder` : ''}</p>
+            {viaje.estado === 'solicitado' && (
+              <div className="dos">
+                <Boton tamano="lg" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/aceptar`)}>Aceptar</Boton>
+                <Boton tamano="lg" variante="peligro" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/rechazar`)}>Rechazar</Boton>
+              </div>
+            )}
+            {viaje.estado === 'asignado' && <Boton tamano="lg" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'en_camino' })}>Voy en camino</Boton>}
+            {viaje.estado === 'en_camino' && <Boton tamano="lg" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'llego' })}>Llegué</Boton>}
+            {viaje.estado === 'llego' && (
+              <div className="dos">
+                <input value={codigo} onChange={(e) => setCodigo(e.target.value)} inputMode="numeric" maxLength={4} aria-label="Código de verificación" placeholder="Código de 4 dígitos" />
+                <Boton tamano="lg" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'a_bordo', codigo })}>Iniciar viaje</Boton>
+              </div>
+            )}
+            {viaje.estado === 'a_bordo' && <Boton tamano="lg" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'finalizado' })}>Finalizar y cobrar</Boton>}
+            {viaje.destino && (
+              <p>
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${viaje.destino.lat},${viaje.destino.lng}`} target="_blank" rel="noreferrer">Abrir en Google Maps</a>
+                {' · '}
+                <a href={`https://waze.com/ul?ll=${viaje.destino.lat},${viaje.destino.lng}&navigate=yes`} target="_blank" rel="noreferrer">Waze</a>
+              </p>
+            )}
+          </article>
+        )}
         <MapaFlota
           altura={320}
           propioId="yo"
           destino={viaje?.destino}
           unidades={coords ? [{ id: 'yo', lat: coords.lat, lng: coords.lng, estado: viaje ? 'ocupado' : 'disponible', unidad: 'Yo', rumbo: coords.rumbo }] : []}
         />
-        <Boton tamano="lg" onClick={lineaToggle} aria-label={linea ? 'Salir de línea' : 'Ponerme en línea'}>
-          {linea ? 'Salir de línea' : 'Ponerme en línea'}
-        </Boton>
-        {viaje && (
-          <article className="panel-form">
-            <h2>{viaje.estado.replaceAll('_', ' ')}</h2>
-            <p>Pasajero {viaje.pasajero_nombre}. Destino: {viaje.destino?.texto || 'punto en el mapa'}.</p>
-            <p>Tarifa de ejemplo ${Number(viaje.tarifa_estimada).toFixed(2)}</p>
-            {viaje.estado === 'solicitado' && (
-              <div className="dos">
-                <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/aceptar`)}>Aceptar</Boton>
-                <Boton variante="peligro" onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/rechazar`)}>Rechazar</Boton>
-              </div>
-            )}
-            {viaje.estado === 'asignado' && <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'en_camino' })}>Voy en camino</Boton>}
-            {viaje.estado === 'en_camino' && <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'a_bordo' })}>Pasajero a bordo</Boton>}
-            {viaje.estado === 'a_bordo' && <Boton onClick={() => accion(`/taxi/conductor/viajes/${viaje.id}/estado`, { estado: 'finalizado' })}>Finalizar viaje</Boton>}
-          </article>
-        )}
+        {ganancias && <p className="meta">Hoy ${Number(ganancias.hoy).toFixed(2)} · semana ${Number(ganancias.semana).toFixed(2)} · nota {ganancias.nota ?? '—'}</p>}
         {!viaje && <EstadoVacio titulo="Sin solicitudes" texto="Cuando un pasajero te elija, el viaje aparece aquí." />}
         {aviso && <Aviso tono={aviso.includes('línea') ? 'ok' : 'error'}>{aviso}</Aviso>}
       </section>

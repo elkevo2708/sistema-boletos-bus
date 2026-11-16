@@ -5,7 +5,7 @@ export default function BarraInferior({ items, etiqueta = 'Navegación principal
     <nav className="barra-inferior" aria-label={etiqueta}>
       {items.map((item) => (
         <NavLink key={item.to} to={item.to} end={item.end}>
-          <item.Icono size={22} strokeWidth={2.1} aria-hidden="true" />
+          <item.Icono size={30} strokeWidth={2.1} aria-hidden="true" />
           <span>{item.label}</span>
         </NavLink>
       ))}

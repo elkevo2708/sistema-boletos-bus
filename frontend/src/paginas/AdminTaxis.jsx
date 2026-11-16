@@ -6,18 +6,24 @@ export default function AdminTaxis({ token }) {
   const [resumen, setResumen] = useState(null);
   const [companias, setCompanias] = useState([]);
   const [viajes, setViajes] = useState([]);
+  const [sos, setSos] = useState([]);
+  const [reporte, setReporte] = useState(null);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
 
   async function cargar() {
-    const [datos, lista, historial] = await Promise.all([
+    const [datos, lista, historial, alertas, cifras] = await Promise.all([
       solicitar('/admin/taxi/resumen', { token }),
       solicitar('/admin/taxi/companias', { token }),
       solicitar('/admin/taxi/viajes', { token }),
+      solicitar('/admin/taxi/sos', { token }),
+      solicitar('/admin/taxi/reportes', { token }),
     ]);
     setResumen(datos);
     setCompanias(lista);
     setViajes(historial);
+    setSos(alertas);
+    setReporte(cifras);
   }
 
   useEffect(() => {
@@ -65,6 +71,18 @@ export default function AdminTaxis({ token }) {
         <h2>Mapa de unidades</h2>
         <p className="meta">Amarillo es libre, gris está ocupado. El icono apunta hacia donde se mueve.</p>
         <MapaFlota unidades={(resumen?.flota || []).filter((item) => item.lat != null)} />
+        {sos.length > 0 && (
+          <ul className="lista-admin">
+            {sos.map((alerta) => (
+              <li key={alerta.id}>SOS {alerta.nombre} · viaje {alerta.viaje_id ?? '—'} · {alerta.lat}, {alerta.lng}</li>
+            ))}
+          </ul>
+        )}
+        {reporte?.por_dia?.length > 0 && (
+          <p className="meta">
+            Últimos días: {reporte.por_dia.map((dia) => `${dia.dia} ${dia.viajes} viajes $${Number(dia.ingresos).toFixed(2)}`).join(' · ')}
+          </p>
+        )}
       </section>
       <div className="rejilla-admin">
         <section className="panel-form">

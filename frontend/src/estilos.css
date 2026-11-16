@@ -637,6 +637,8 @@ tfoot th { font-size: 1.05rem; }
 .taxi-asa { display: none; width: 42px; height: 4px; border-radius: var(--r-full); background: #c5d2de; margin: 0 auto var(--s-2); }
 .leaflet-container { height: 100%; width: 100%; font: inherit; }
 .taxi-cerca { background: var(--amarillo); color: var(--marino); padding: var(--s-3); border-radius: var(--r-md); margin: 0; }
+.taxi-codigo { font-size: 1.35rem; letter-spacing: 0.2em; margin: 0; }
+.taxi-estado h2 { margin: 0; }
 .conductor-marco { min-height: 100vh; background: var(--papel); }
 .conductor-barra { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--s-4); background: #fff; border-bottom: 3px solid var(--turquesa); }
 .conductor-pagina { width: min(560px, calc(100% - 2rem)); margin: var(--s-5) auto; display: grid; gap: var(--s-4); }
@@ -734,10 +736,10 @@ tfoot th { font-size: 1.05rem; }
   .tabla-wrap td { border: 0; display: flex; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) 0; }
   .tabla-wrap td::before { content: attr(data-label); font-weight: 700; color: var(--tinta-suave); }
   .tabla-wrap tfoot { display: block; }
-  .whatsapp { left: 0.8rem; right: auto; bottom: 5.6rem; }
-  .portal, .tema-transporte, .saas { padding-bottom: 76px; }
+  .whatsapp { left: 0.8rem; right: auto; bottom: 6.6rem; }
+  .portal, .tema-transporte, .saas { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .portal:has(.taxi-pagina) { padding-bottom: 0; }
-  .taxi-panel { bottom: 72px; }
+  .taxi-panel { bottom: 0; padding-bottom: calc(var(--s-4) + env(safe-area-inset-bottom)); }
   .toast { bottom: 5.4rem; }
 }
 @media (max-width: 360px) {
@@ -934,13 +936,16 @@ tfoot th { font-size: 1.05rem; }
   display: none;
 }
 .barra-inferior a, .barra-admin button {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  min-height: 56px; color: var(--tinta-suave); text-decoration: none; font-size: 0.68rem; font-weight: 800;
-  background: transparent; border: 0; cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 56px; color: var(--tinta-suave); text-decoration: none; font-size: 13px; font-weight: 800;
+  background: transparent; border: 0; cursor: pointer; font-family: inherit; line-height: 1.15;
 }
-.barra-inferior a svg, .barra-admin button svg { padding: 6px; border-radius: 999px; }
+.barra-inferior a svg, .barra-admin button svg { padding: 4px; border-radius: 999px; }
 .barra-inferior a[aria-current="page"], .barra-admin button.activo { color: var(--verde-oscuro); }
 .barra-inferior a[aria-current="page"] svg, .barra-admin button.activo svg { background: var(--verde-suave); }
+.barra-inferior a[aria-current="page"]::before {
+  content: ""; width: 22px; height: 3px; border-radius: 999px; background: var(--verde-oscuro); margin-bottom: 2px;
+}
 .marca .marca-logo { height: 40px; width: 40px; max-width: 40px; object-fit: contain; background: #fff; border-radius: 12px; }
 .cabecera-fija { box-shadow: 0 1px 0 var(--linea); }
 .atajos-ruta button {
@@ -951,9 +956,11 @@ tfoot th { font-size: 1.05rem; }
     display: grid; grid-template-columns: repeat(5, 1fr);
     position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-float);
     background: #fff; border-top: 1px solid var(--linea);
-    padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
-    box-shadow: 0 -8px 24px rgba(18, 51, 34, 0.06);
+    padding: 8px 4px calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 24px rgba(18, 51, 34, 0.08);
   }
+  .barra-inferior a { min-height: 64px; }
+  .portal:has(.taxi-pagina) .barra-inferior { display: none; }
   .barra-admin { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
   .accesos-rapidos { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
   .acceso-rapido { min-height: 96px; font-size: 0.75rem; padding: var(--s-2); border-radius: 20px; }
